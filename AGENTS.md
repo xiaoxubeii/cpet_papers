@@ -17,3 +17,20 @@ Write commit subjects in imperative mood with a short prefix (`docs:`, `fig:`, `
 
 ## Figure & Asset Management
 Store raw plots, scripts, and provenance alongside each exported figure inside `figures/` subfolders (for example, `figures/at_curve/src/`). Document preprocessing steps in a local README so replacements remain reproducible. Update captions in `main.tex` whenever assets change, and prefer `\includegraphics[width=\linewidth]` to maintain consistent sizing.
+
+## CPET 数据标准和数据集
+CPET 数据标准：/root/autodl-tmp/vox_cpet/cpetformat/cpet.yaml
+cosmed 数据转换标准：/root/autodl-tmp/vox_cpet/cpetformat/cosmed.yaml
+ganshorn 数据转换标准：/root/autodl-tmp/vox_cpet/cpetformat/ganshorn.yaml
+
+数据清理流程：
+- 清洗工具：/root/autodl-tmp/vox_cpet/vox_cpet/cmd/cpetx-data
+- 清洗流程：/root/autodl-tmp/vox_cpet/vox_cpet/dataset/cpet_processor.py
+- 标准化和分割流程：/root/autodl-tmp/vox_cpet/vox_cpet/dataset/cpet_dataset_generator.py
+
+数据集目录在：/root/autodl-tmp/cpet_workspace/artifacts/cpet_dataset
+- cpet_dataset：全量数据集
+- *_small：10% 数据集
+- *_ssl：预训练数据集
+- *_explicit_split：train/val 包含三个中心，test 使用了一个外部 punan 数据集
+- *_loco：三个数据集交替做 LOCO

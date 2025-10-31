@@ -67,12 +67,42 @@ Development and Validation of an AI Model for Anaerobic Threshold Assessment: A 
 获得 [X, Y, Z] 中心伦理委员会 (IRB) 批准，豁免知情同意。
 
 数据收集与标准化 (CPET-12k 数据集):
+- 标准定义：使用 CPET 数据标准 v1.4（cpet.yaml），以及厂商映射（cosmed.yaml, ganshorn.yaml），路径：/root/autodl-tmp/vox_cpet/cpetformat/。
+- 提取（采集→标准化落盘）：`vox_cpet/cmd/cpetx-data` 的 `extract` 子命令批量遍历中心文件夹并调用对应抽取器（`vox_cpet/extractors`）。输出为每中心一个 HDF5（cpet_data_source_<center>.h5），结构为 per-examination 的 {subject, examination, calibration, summary, timeseries}。去重规则：以 (Subject_ID, Examination_Date, summary 指标摘要) 作为签名，保留首个检查；元数据记录机构信息和 schema 版本；产生日志。
+- 清洗（特征构建）：`vox_cpet/dataset/cpet_processor.py` 将 per-examination 合并为中心级 DataFrame，并执行：
+  1) 时间聚合（当原始采样频率高于配置间隔时，默认秒级），稳健均值；
+  2) 线性插值 + 首/尾填充；
+  3) 过滤器（可选）：运动阶段前 N 分钟、阶段筛选、时间窗口、数值范围（HR/VO2 等）；
+  4) 目标列完整性：删除缺失非 AT 目标的检查；允许缺失 Time_at_AT（右删失，若仅作辅助监督）。
+- 数据集生成与切分：`cpetx-data generate` 混合多个中心并生成 HDF5 数据集，支持：
+  1) standard：按检查随机切分 train/val/test；
+  2) explicit split：显式指定训练/验证中心与测试中心；
+  3) LOCO：逐中心留出，输出每折一个文件夹。标准化：对指定列（standardization_names）在训练集拟合 StandardScaler，并将参数应用到 val/test；均值/方差与列名写入 HDF5 元数据，便于复原与审计。
+- 采样：`cpetx-data sample` 对既有 HDF5 数据集按 split 抽取（可选按 center/device 分组等），生成 *_small 版本，便于快速迭代。
+- 目录规范：/root/autodl-tmp/cpet_workspace/artifacts/cpet_dataset 下统一管理：
+  - cpet_dataset：全量混合数据集
+  - *_small：10% 抽样集
+  - *_ssl：自监督预训练集
+  - *_explicit_split：train/val 为三中心，test 为外部 punan 数据集
+  - *_loco：三中心轮流作为留出测试集
 
-人群: 描述三个中心的入组/排除标准 (例如：20XX-20XX 年间，年龄 > 18 岁，完成了 CPET 测试...)。
+- 可复现实例（仅示意）：
+  - 提取（每中心一个源文件）：
+    cpetx-data extract --input-root /path/raw_inputs \
+      --output-root /path/extracted --schema-dir /root/autodl-tmp/vox_cpet/cpetformat \
+      --institutes shanxi xuhui zhongshan --default-extractor cosmed 
+  - 生成（standard 切分）：
+    cpetx-data generate --input-root /path/extracted --institutes shanxi xuhui zhongshan \
+      --output /path/datasets/cpet_dataset.h5 --train-ratio 0.7 --val-ratio 0.15 --test-ratio 0.15 \
+      --columns-config /path/columns.yaml --aggregation-interval-seconds 10
+  - 生成（LOCO）：
+    cpetx-data generate --input-root /path/extracted --institutes shanxi xuhui zhongshan \
+      --split-mode loco --output /path/datasets/cpet_dataset_loco/ --val-ratio 0.15 --random-seed 42 
 
-设备: 明确两种设备型号 (Ganshorn, Cosmed)。
-
-数据标准化流程: 关键步骤。描述如何制定“CPET 数据规范”，如何对齐不同设备的采样率、数据格式、变量名差异，形成一个统一的分析矩阵 (Analysis-ready dataset)。
+- 验收：
+  - `latexmk -pdf main.tex` 无警告；`main.log` 无 overfull/underfull boxes；
+  - 数据集 HDF5 含有 `metadata/{feature_columns,target_columns,metadata_columns}`、`splits/{train,val,test}/features`、`metadata/splits_statistics`；
+  - 若启用标准化，`splits/train/metadata/standardization/scaler_params/{mean,scale,standardized_columns}` 存在。
 
 金标准定义 (Reference Standard):
 
@@ -84,7 +114,13 @@ Development and Validation of an AI Model for Anaerobic Threshold Assessment: A 
 
 数据预处理: 时序数据插值、归一化等。
 
-模型架构: 简述 cpet_former (例如：一个基于 Transformer Encoder 的时序模型，能捕捉多变量（如 $\text{VO}_2$, $\text{VCO}_2$, $\text{VE}$ 等）间的复杂时序依赖)。
+模型族：
+  - ML 基线：ridge/svr/random_forest/lightgbm，将时序汇总为表格特征（统计/趋势/领域特征+人口学）用于回归 VO2@AT。
+  - cpet_former（ERM 基线）：Transformer 编码器 + 掩码池化 + 回归头，主任务 VO2@AT，可带 Time@AT 辅助损失。
+  - cpet_former_center_film（已知中心增强）：中心嵌入 + per-layer FiLM（scale/shift）调制 token 表征，提升三中心混合数据集表现。
+  - cpet_former_v1（未知中心增强）：按中心做 GroupDRO，加权最差中心的损失，提高 LOCO 下的最差中心性能。
+  - cpet_former_v2（自监督+微调）：无标签预训练（masked reconstruction，可选对比头）→ 冻结/部分解冻微调预测头，少量标签（5–10%）达到接近全量监督性能。
+  - 多目标版：共享主干 + 多输出头，同时预测 VO2@AT/Time@AT/HR@AT，支持辅助损失与权重。
 
 传统 ML 基线: LightGBM, Random Forest, SVR (作为对比)。
 
@@ -92,7 +128,12 @@ Development and Validation of an AI Model for Anaerobic Threshold Assessment: A 
 
 cpet_former_center_film: 解决已知中心/设备差异。
 
-cpet_former_v1 (GroupDRO): 解决未知中心泛化问题（模拟模型部署到新医院）。
+预期对比：
+  1) cpet_former > 传统 ML（Mixed-CV）
+  2) FiLM 在已知中心（Mixed-CV）优于 ERM
+  3) GroupDRO 在未知中心（LOCO）优于 ERM，最差中心 MAE 显著下降
+  4) 自监督（v2）在 5–10% 标签下接近/超过 ERM（Mixed-CV 和 LOCO）
+  5) 多任务版在多指标上保持稳定（与单任务相近），证明任务泛化能力
 
 cpet_former_v2 (SSL): 解决标签稀缺问题（模拟在新医院快速部署）。
 
@@ -115,6 +156,8 @@ cpet_former_v2 (SSL): 解决标签稀缺问题（模拟在新医院快速部署�
 对比: 将 AI 预测、12 名医生判读结果，共同与“金标准”进行比较。
 
 实验 4: 次要分析 (SSL & 多任务): 评估 v2 的少样本性能和多任务模型的准确性。
+  - 报告：标注占比（1/5/10/50%） vs MAE/$R^2$；多目标各指标 MAE。
+  - 统计：与 ERM 配对检验；绘制学习曲线。
 
 评估指标:
 
@@ -209,3 +252,47 @@ Supplementary Table: 多任务模型的性能。
 7. 补充材料 (Supplementary Material)
 
 模型架构细节、超参数、数据标准化详细流程、所有次要结果的表格、Bland-Altman 全图等。
+
+——
+
+更新记录（2025-10-31）
+
+目的：依据本文件大纲重构 main.tex，保持版式与风格不变，更新内容结构与叙事逻辑。
+
+已执行的结构调整（对应 main.tex）：
+- 摘要：按“背景-方法-结果-解读”四段重写，占位符保留，强调 LOCO 与读者研究。
+- 引言：补充临床痛点与研究缺口；明确四项贡献与研究假说（AI 非劣于高级专家）。
+- 方法：细化为 7 个小节，与大纲对齐。
+  1) Study Design and Ethics（研究设计与伦理）
+  2) Dataset and Standardization（数据收集与标准化，CPET-12k）
+  3) Reference Standard（专家共识金标准）
+  4) Model: CPET-former（模型）
+  5) Training and Domain Generalization（训练与域泛化，GroupDRO）
+  6) Evaluation Protocols（评估方案：Mixed-CV 与 LOCO）
+  7) Blinded Reader Study（盲法读者研究）+ Interpretability and QC（可解释性与质控）
+- 结果：
+  - 新增研究流程图占位（fig:flow），新增基线表占位（tab:baseline）。
+  - 保留并规范性能表（tab:perf），突出 LOCO 图（fig:loco）。
+  - 读者研究箱线图（fig:reader）与 Bland–Altman 图（fig:ba）占位。
+  - 次要分析：SSL 学习曲线（fig:ssl）占位。
+- 数据集与补充材料：
+  - 数据集部分已填入真实结构与计数（69 features/4 targets/10 metadata；train/val/test examinations=10262/1282/1285；LOCO 三包大小=8785/2411/1633）。
+  - 基线表已补齐各中心样本量 N（女比例/年龄/Peak VO2 仍为占位，待提供原始单位的统计口径）。
+  - 新增数据组织示意图（fig:data_org；figures/fig_data_organization.png）。
+  - 补充材料新增数据规范概览（S1/S2）与 69 列完整清单表（tab:data_spec_full）。
+- 讨论：对齐大纲的主要发现、文献关系、优势、局限与临床意义。
+- 结论、作者声明、数据与代码可用性：语义收束；将长 URL 用 \url{} 处理。
+
+版式与规范：
+- 保持 Title Case 的章节标题；浮动体标签使用前缀 fig:/tab:；占位图采用 tcolorbox；图表引用为相对路径设计。
+- 对长行与 URL 做断行/可断处理，清理 Overfull/Underfull box 警告（当前构建无警告）。
+
+后续待补（替换占位并核对数值）：
+- 人群 N、分中心样本量、设备型号与年限。
+- 性能指标（MAE/RMSE/R^2，含 95% CI）、统计检验 p 值。
+- 读者研究样本数、分层 MAE、ICC 与区间。
+- SSL 不同标注比例下的曲线与具体数值。
+
+对评审/协作的提示：
+- 若后续引入新宏或包，请只在 main.tex 导言区相应注释块内添加，并保持两空格对齐的轻量缩进。
+- 在替换图表时，将资产放入 figures/ 并使用相对路径 include；建议宽度统一为 \includegraphics[width=\linewidth]{...}。
