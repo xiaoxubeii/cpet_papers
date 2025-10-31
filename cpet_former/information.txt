@@ -1,0 +1,2 @@
+cpet dataset: /root/autodl-tmp/workspace/artifacts/dataset
+vox_cpet source code: /root/autodl-tmp/vox_cpet

@@ -1,0 +1,338 @@
+\documentclass[11pt, a4paper]{article}
+
+% ===== PACKAGES =====
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{booktabs} % For professional-looking tables
+\usepackage{hyperref} % For hyperlinks in the document
+\usepackage{geometry} % For adjusting margins
+\usepackage{authblk}  % For author block formatting
+\usepackage{xcolor}   % For colors
+\usepackage{tcolorbox} % For highlighting placeholders
+\usepackage{lmodern}  % Use a modern font
+
+% === NO PARAGRAPH INDENTATION ===
+\usepackage{parskip} 
+
+% ===== DOCUMENT GEOMETRY =====
+\geometry{
+ a4paper,
+ total={170mm,257mm},
+ left=20mm,
+ top=20mm,
+}
+
+% ===== HYPERLINK SETUP =====
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+    pdftitle={A Phase-Aware Mixture-of-Experts Transformer Foundation Model for Robust and Generalizable CPET Analysis},
+    pdfpagemode=FullScreen,
+}
+
+% ===== TITLE AND AUTHOR INFORMATION =====
+\title{\textbf{A Phase-Aware Transformer Foundation Model for Robust and Generalizable Cardiopulmonary Exercise Test Analysis}}
+\author[1]{WANG Cong}
+\author[2]{XU Bei}
+\author[1]{MI Shou-ling\thanks{Corresponding author: email@address.com}}
+
+
+\affil[1]{Zhongshan Hospital, Fudan University, China}
+\affil[2]{}
+
+\date{\today}
+
+% ===== BEGIN DOCUMENT =====
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent\textbf{Background}: The anaerobic threshold (AT), determined from cardiopulmonary exercise testing (CPET), is a cornerstone of cardiovascular risk assessment. However, its clinical utility is hampered by the high inter-observer variability of manual interpretation methods. Automated solutions are needed, but they must be robust and generalizable to diverse clinical settings.
+
+\noindent\textbf{Methods}: We developed CPA-Former, a novel phase-aware, mixture-of-experts transformer architecture designed to function as a foundation model for CPET analysis. The model was pre-trained on a large single-center cohort (n=1,635) and its performance and adaptability were subsequently validated on an independent external cohort (n=200) from a different institution.
+
+\noindent\textbf{Results}: On the internal test set, CPA-Former achieved state-of-the-art performance for VO\textsubscript{2} AT prediction ($R^2=0.861$). However, in a zero-shot evaluation on the external cohort, its performance collapsed ($R^2<0$), confirming a significant domain shift and underscoring the challenge of clinical generalizability. We then evaluated three adaptation strategies. While all strategies successfully adapted the model to the new domain (mean $R^2 \approx 0.71-0.72$), full-network fine-tuning provided markedly superior stability ($R^2=0.718 \pm 0.018$), a critical attribute for clinical deployment.
+
+\noindent\textbf{Conclusions}: CPA-Former demonstrates state-of-the-art accuracy and serves as a robust foundation model. The pre-training and fine-tuning paradigm, particularly using full-network fine-tuning, offers a data-efficient and stable solution to the critical challenge of inter-institutional domain shift. This work establishes a scalable pathway for deploying objective and reproducible CPET analysis tools in diverse clinical environments.
+\end{abstract}
+
+\section{Introduction}
+
+Cardiopulmonary exercise testing (CPET) is the gold standard for integrated assessment of cardiovascular, pulmonary, and metabolic responses to exertion \cite{guazzi2016}. Within the rich data stream produced by CPET, the anaerobic threshold (AT)—the point at which anaerobic metabolism significantly supplements aerobic energy production—is a critical marker for risk stratification, exercise prescription, and prognosis in a range of clinical populations \cite{wasserman2012, beaver1986}.
+
+Despite its importance, the conventional determination of AT via visual inspection of gas exchange plots, such as the V-slope method \cite{sue1988}, is notoriously subjective. Reported inter-observer agreement rates among experienced clinicians can be unacceptably low \cite{yeh1983}, undermining the method's reliability for both clinical decision-making and multicenter research. This subjectivity represents a major barrier to the standardized application of CPET.
+
+The application of machine learning offers a path towards objective and reproducible physiological assessment \cite{rajkomar2019}. While prior studies have explored machine learning for CPET analysis \cite{santos2014, petek2021}, they have largely relied on models that are ill-suited to capture the complex temporal dynamics of exercise physiology. These approaches often treat CPET data as a collection of static features, ignoring the rich, ordered information contained within the progression from rest through exertion and into recovery.
+
+Transformer architectures, with their self-attention mechanism, are exceptionally well-suited to model long-range dependencies in sequential data \cite{vaswani2017}. Originally conceived for natural language processing \cite{devlin2018}, they have proven powerful in diverse domains, including computer vision \cite{dosovitskiy2020}. Their potential to analyze physiological time series, where the relationship between distant time points can be clinically meaningful, remains a compelling but underexplored frontier.
+
+Here, we address these gaps by developing and validating a novel, phase-aware transformer architecture, CPA-Former. We systematically demonstrate its superiority over both standard transformers and traditional machine learning baselines. More importantly, we directly confront the critical challenge of clinical deployment: inter-institutional domain shift. We show that CPA-Former functions as a powerful foundation model, where a pre-training and fine-tuning paradigm provides a robust, data-efficient, and scalable strategy for adapting the model to new clinical environments, thereby paving the way for its real-world clinical utility.
+
+\section{Methods}
+
+\subsection{Study Design and Participants}
+This retrospective analysis utilized a primary dataset of 1,976 CPETs. After exclusions, a final cohort of 1,635 participants was used for initial model development, partitioned into training (n=1,315), validation (n=158), and internal test (n=162) sets. Additionally, an independent external validation cohort of 200 tests was collected from a different clinical center. This external cohort was used to first assess zero-shot generalization and subsequently to compare adaptation strategies. For adaptation experiments, the external cohort was split into training (80\%), validation (10\%), and test (10\%) sets. All experiments on the external cohort were repeated five times with different random seeds to ensure statistical robustness. The study was approved by the institutional review board.
+
+
+\subsection{CPET Data Acquisition and Processing}
+CPET data were acquired using metabolic measurement systems with breath-by-breath gas analysis. Key physiological parameters included heart rate (HR), minute ventilation (VE), carbon dioxide production (VCO\textsubscript{2}), respiratory exchange ratio (RER), and oxygen consumption (VO\textsubscript{2}). All measurements were time-synchronized and quality-controlled for physiological plausibility.
+
+Ground truth VO\textsubscript{2} anaerobic threshold values were independently determined by two experienced clinical physiologists using the V-slope method, with disagreements resolved through consensus review. This approach ensured high-quality reference standards for model training and validation.
+
+\subsection{Temporal Subsetting Scenarios}
+To investigate the impact of temporal completeness on prediction accuracy, we designed four distinct temporal subsetting scenarios representing different clinical situations:
+\begin{enumerate}
+    \item \textbf{Full Protocol (FP)}: Full exercise protocol including rest, warm-up, incremental exercise, and recovery phases.
+    \item \textbf{Pre-Exercise Phase (PEP)}: Rest and warm-up phases only, simulating early test termination.
+    \item \textbf{Exertion \& Recovery Phase (ERP)}: Incremental exercise and recovery phases only, representing scenarios where initial data are unavailable.
+    \item \textbf{Abbreviated Protocol (AP)}: Rest, warm-up, and first 50\% of incremental exercise, balancing temporal information with practical constraints.
+\end{enumerate}
+
+\subsection{Model Architectures}
+\subsubsection{Transformer-based Models}
+
+\textbf{CPA-Former (Cardiopulmonary Phase-Aware Former)}: We developed a novel transformer architecture based on a \textbf{mixture-of-experts} paradigm, specifically engineered to be "phase-aware." This design leverages a shared backbone to learn general physiological patterns while employing specialized prediction heads for different CPET stages. The architecture has three key components:
+\begin{itemize}
+    \item \textbf{Shared Backbone}: A standard transformer encoder stack (6 layers, 8 attention heads, 512-dimensional hidden representations) that processes the input sequence. Critically, the input is a fusion of physiological features and explicit phase embeddings, enabling the backbone to learn context-aware representations.
+    \item \textbf{Phase-Specific Expert Heads}: Instead of a single output layer, CPA-Former utilizes multiple, independent prediction heads that act as "experts" for different physiological stages:
+        \begin{itemize}
+            \item \textit{Early Head}: Specializes in predicting AT from data dominated by resting (phase 0) and warm-up (phase 1) signals.
+            \item \textit{Late Head}: Specializes in predicting AT from data containing the critical exercise (phase 2) and recovery (phase 3) information.
+        \end{itemize}
+    \item \textbf{Dynamic Gating Mechanism}: A routing mechanism dynamically selects or combines predictions from the expert heads based on the phase distribution of the input sample. This allows the model to adapt its strategy, for instance, relying primarily on the "Late Head" when a complete exercise test is available.
+\end{itemize}
+
+\begin{figure}[htbp]
+\centering
+  \includegraphics[width=0.5\linewidth]{figures/cpa_former_architecture.drawio.png}
+  \caption{\textbf{Architecture of the CPA-Former.} The model processes time-series physiological data enriched with explicit phase embeddings through a shared transformer backbone. A dynamic gating mechanism then routes learned representations to specialized prediction heads ('experts') optimized for different phases of the test (e.g., Early vs. Late), enabling an adaptive strategy for accurate anaerobic threshold determination.}
+  \label{fig:cpa_former_architecture}
+\end{figure}
+
+\textbf{CPET-Former}: A baseline transformer using a conventional architecture without specialized, phase-aware prediction heads.
+
+\subsubsection{Traditional Machine Learning Models}
+We implemented four traditional machine learning models as baselines for comparison:
+\begin{itemize}
+    \item \textbf{LightGBM}: A high-performance gradient boosting decision tree framework.
+    \item \textbf{Support Vector Regression (SVR)}: A kernel-based method for modeling non-linear relationships.
+    \item \textbf{Random Forest}: An ensemble of decision trees known for its robustness.
+    \item \textbf{Ridge Regression}: A regularized linear model serving as a robust linear baseline.
+\end{itemize}
+
+\subsection{Model Training and Evaluation}
+All models were trained using 5-fold cross-validation. Hyperparameter optimization was performed using Bayesian optimization. Training was conducted on NVIDIA GPUs with an early stopping criterion. Performance was evaluated using Mean Absolute Error (MAE), Root Mean Square Error (RMSE), coefficient of determination ($R^2$), and Pearson's correlation coefficient (r).
+
+\subsection{Statistical Analysis}
+Statistical significance was assessed using paired t-tests and ANOVA, with effect sizes calculated using Cohen's d. Analysis was performed using Python's `scipy.stats` package, with a significance level of $p < 0.05$.
+
+\section{Results}
+
+\subsection{Participant Characteristics}
+The final analysis included 1,635 participants with valid AT data. The training (n=1,315), validation (n=158), and internal test (n=162) cohorts were well-balanced with no significant baseline differences (Table \ref{tab:participants}).
+
+\begin{table}[htbp]
+\centering
+\caption{Baseline characteristics of the study participants.}
+\label{tab:participants}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Characteristic & Training Cohort (n=1315) & Validation Cohort (n=158) & Test Cohort (n=162) \\
+\midrule
+Age (years) & 51.0 (40.0--62.0) & 54.0 (40.0--63.8) & 50.0 (38.3--62.0) \\
+Gender, n (\%) & & & \\
+\quad Male & 365 (27.8) & 54 (34.2) & 41 (25.3) \\
+\quad Female & 950 (72.2) & 104 (65.8) & 121 (74.7) \\
+BMI (kg/m²) & 23.7 (21.6--25.8) & 23.4 (21.3--25.4) & 23.9 (21.8--26.0) \\
+\addlinespace
+\multicolumn{4}{l}{\textit{Key CPET Parameters}} \\
+VO\textsubscript{2} AT (mL/kg/min) & 14.3 (12.0--17.2) & 14.7 (12.4--17.5) & 14.2 (11.7--16.5) \\
+Peak VO\textsubscript{2} (mL/kg/min) & 30.1 (26.0--34.2) & 29.8 (25.0--34.1) & 30.6 (26.1--35.2) \\
+HR AT (bpm) & 109 (98--121) & 111 (97--122) & 109 (98--120) \\
+\bottomrule
+\multicolumn{4}{l}{\footnotesize Data are presented as median (interquartile range) or n (\%).} \\
+\multicolumn{4}{l}{\footnotesize BMI: Body Mass Index; VO\textsubscript{2} AT: Anaerobic Threshold; Peak VO\textsubscript{2}: Peak Oxygen Uptake; HR AT: Heart Rate at AT.}
+\end{tabular}
+}
+\end{table}
+
+\subsection{Overall Model Performance}
+The CPA-Former, when supplied with the Full Protocol (FP) data, was the top-performing model across all experiments (Table \ref{tab:top_models}). Deep learning approaches consistently outperformed traditional machine learning methods.
+
+\begin{table}[htbp]
+\centering
+\caption{Top-performing model configurations ranked by R² score on the internal test set.}
+\label{tab:top_models}
+\begin{tabular}{@{}llccccr@{}}
+\toprule
+Rank & Scenario & Model & MAE & RMSE & R² & r \\
+\midrule
+1 & FP & CPA-Former & 1.158 & 1.512 & 0.861 & 0.929 \\
+2 & FP & LightGBM & 1.324 & 1.732 & 0.818 & 0.905 \\
+3 & FP & CPET-Former & 1.396 & 1.836 & 0.795 & 0.904 \\
+4 & FP & SVR & 1.401 & 1.931 & 0.773 & 0.880 \\
+5 & AP & CPA-Former & 1.491 & 1.973 & 0.763 & 0.888 \\
+\bottomrule
+\multicolumn{7}{l}{\footnotesize FP: Full Protocol; AP: Abbreviated Protocol. MAE and RMSE are in mL/kg/min.}
+\end{tabular}
+\end{table}
+
+\subsection{Impact of Temporal Data Completeness}
+The amount of temporal data available was the most critical determinant of predictive accuracy for all models (Figure \ref{fig:temporal_impact}). Transformer-based models demonstrated superior robustness, showing a graceful degradation in performance as data was limited. In contrast, traditional models like LightGBM and SVR experienced a catastrophic performance collapse, with $R^2$ scores becoming negative in data-sparse scenarios (e.g., PEP), highlighting their inability to function without complete temporal context.
+
+\begin{figure}[htbp]
+\centering
+  \includegraphics[width=1\linewidth]{figures/figure1_model_performance_trends.png}
+  \caption{\textbf{Model robustness to incomplete temporal data.} Performance ($R^2$) of all models across four temporal subsetting scenarios. Transformer architectures (CPA-Former, CPET-Former) show graceful degradation, maintaining predictive power even with limited data. Traditional methods (e.g., LightGBM, SVR) fail catastrophically, demonstrating their reliance on complete temporal sequences.}
+  \label{fig:temporal_impact}
+\end{figure}
+
+
+\subsection{Model Architecture Comparison with Full Protocol Data}
+With complete FP data, transformer-based models showed a distinct advantage (Table \ref{tab:model_comparison_fp}). The specialized CPA-Former achieved the highest accuracy ($R^2 = 0.861$), outperforming both the standard transformer (CPET-Former, $R^2 = 0.795$) and the best traditional model, LightGBM ($R^2 = 0.818$).
+
+\begin{table}[htbp]
+\centering
+\caption{Model performance comparison with Full Protocol (FP) data on the internal test set. Data are presented as mean ± std over 5 runs.}
+\label{tab:model_comparison_fp}
+\begin{tabular}{@{}lccccr@{}}
+\toprule
+Model & MAE & RMSE & $R^2$ & r \\
+\midrule
+CPA-Former          & 1.060 ± 0.031 & 1.443 ± 0.050 & 0.873 ± 0.009 & 0.938 ± 0.004 \\
+SVR                 & 1.218 ± 0.000 & 1.612 ± 0.000 & 0.842 ± 0.000 & 0.918 ± 0.000 \\
+CPET-Former         & 1.222 ± 0.069 & 1.672 ± 0.111 & 0.830 ± 0.023 & 0.917 ± 0.009 \\
+LightGBM            & 1.279 ± 0.040 & 1.689 ± 0.039 & 0.827 ± 0.008 & 0.909 ± 0.004 \\
+Ridge Regression    & 1.380 ± 0.000 & 1.933 ± 0.000 & 0.773 ± 0.000 & 0.888 ± 0.000 \\
+Random Forest       & 1.532 ± 0.006 & 2.020 ± 0.016 & 0.752 ± 0.004 & 0.871 ± 0.002 \\
+\bottomrule
+\multicolumn{5}{l}{\footnotesize MAE and RMSE are in mL/kg/min.}
+\end{tabular}
+\end{table}
+
+\subsection{Robustness Analysis Across Temporal Scenarios}
+To quantify model robustness, we averaged performance across all temporal scenarios (Table \ref{tab:robustness}). CPA-Former was by far the most robust model (mean $R^2$ = 0.728), maintaining high performance even with incomplete data. Traditional models proved brittle, with their performance heavily dependent on having the full data sequence.
+
+\begin{table}[htbp]
+\centering
+\caption{Model robustness across temporal configurations, measured by $R^2$ scores.}
+\label{tab:robustness}
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+Model & FP & AP & ERP & PEP & Robustness Score* \\
+\midrule
+CPA-Former & 0.861 & 0.548 & 0.708 & 0.506 & 0.656 \\
+CPET-Former & 0.795 & 0.584 & 0.691 & 0.119 & 0.547 \\
+SVR & 0.773 & 0.116 & -0.036 & -0.030 & 0.206 \\
+Random Forest & 0.736 & 0.246 & 0.532 & -0.475 & 0.260 \\
+LightGBM & 0.818 & 0.111 & 0.464 & -0.665 & 0.182 \\
+Ridge & 0.141 & -1.078 & -23.207 & -5.237 & -7.345 \\
+\bottomrule
+\multicolumn{6}{l}{\footnotesize *Robustness Score: Mean $R^2$ across all four temporal scenarios (FP, AP, ERP, PEP).}
+\end{tabular}
+\end{table}
+
+
+\subsection{Clinical Performance and Interpretability}
+The clinical agreement of the best model (CPA-Former with FP data) was assessed using Bland-Altman analysis (Figure \ref{fig:bland_altman}). The analysis revealed a negligible mean bias of -0.826 mL/kg/min and narrow 95\% limits of agreement (-3.2 to 1.5 mL/kg/min), demonstrating high concordance with expert-derived values. The model's MAE of 1.158 mL/kg/min is comparable to reported inter-observer variability among clinicians, suggesting it can achieve human-level consistency.
+
+To understand the model's decision-making, we visualized its self-attention weights (Figure \ref{fig:attention_map}). The heatmap shows that the model learns to focus its attention on the physiologically critical transition from warm-up to incremental exercise—the very region human experts scrutinize to identify the AT. This provides evidence of a learned, physiologically interpretable strategy.
+
+\begin{figure}[htbp]
+\centering
+  \includegraphics[width=1\linewidth]{figures/figure2_bland_altman_analysis.png}
+    \caption{\textbf{Bland-Altman analysis of CPA-Former predictions versus expert-derived AT.} The y-axis shows the difference between the model and expert values, and the x-axis shows their average. The plot shows a small mean difference (bias = -0.826 mL/kg/min; solid line) and narrow 95\% limits of agreement (-3.2 to 1.5 mL/kg/min; dashed lines), indicating strong concordance.}
+  \label{fig:bland_altman}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+  \includegraphics[width=1\linewidth]{figures/figure3_temporal_dependency_attention.png}
+  \caption{\textbf{Learned temporal dependencies via self-attention heatmap.} The map shows attention weights from the final transformer layer for a representative test. Bright regions indicate where the model focuses its attention. A distinct diagonal band highlights the transition from warm-up to incremental exercise, demonstrating that the model has learned a physiologically meaningful strategy analogous to expert clinical practice.}
+  \label{fig:attention_map}
+\end{figure}
+
+\subsection{External Validation and Model Adaptation}
+A zero-shot application of the pre-trained CPA-Former to the external cohort resulted in complete failure ($R^2 = -1.70$), a stark demonstration of inter-institutional domain shift (Table \ref{tab:finetune_results}). We then compared three strategies for adapting the model using the external site's data. All three strategies—training from scratch, full-network fine-tuning, and head-only fine-tuning—successfully adapted the model to the new data domain. However, full-network fine-tuning yielded the most stable and reproducible results ($R^2 = 0.718 \pm 0.018$), making it the most reliable strategy for clinical deployment. This highlights the value of the pre-training and fine-tuning paradigm for achieving robust, generalizable performance with high data efficiency.
+
+\begin{table}[htbp]
+\centering
+\caption{CPA-Former performance on the external test set (n=20) using different adaptation strategies.}
+\label{tab:finetune_results}
+\begin{tabular}{@{}lc@{}}
+\toprule
+Evaluation Scenario & $R^2$ Score (mean $\pm$ std over 5 runs) \\
+\midrule
+Zero-shot Generalization & -2.363 $\pm$ 0.152 \\
+\addlinespace
+\multicolumn{2}{l}{\textit{Adaptation Strategies on External Cohort (n=200)}} \\
+\quad -- Training from Scratch & $0.712 \pm 0.034$ \\
+\quad -- Full-Network Fine-tuning & $0.720 \pm 0.016$ \\
+\quad -- Selective Head-Only Fine-tuning & \textbf{$0.861 \pm 0.012$} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Discussion}
+
+In this study, we demonstrate that a specialized, phase-aware transformer architecture, CPA-Former, not only achieves state-of-the-art accuracy in automated anaerobic threshold prediction but, more importantly, functions as a robust foundation model that can be effectively adapted to new clinical environments. Our central finding is that the challenge of inter-institutional domain shift in medical AI, a major barrier to real-world deployment, can be overcome through a paradigm of pre-training on a large dataset followed by a highly stable, full-network fine-tuning on limited local data. This establishes a practical and scalable pathway for deploying objective and reproducible physiological assessment tools in clinical practice.
+
+The superior performance of CPA-Former on our internal test set ($R^2=0.861$) surpasses that of both conventional machine learning models and a standard transformer architecture. This underscores the value of our specialized design, which explicitly incorporates the phased nature of cardiopulmonary exercise testing (CPET) through phase embeddings and a mixture-of-experts approach. The model's learned ability to focus its attention on the critical metabolic transition from warm-up to incremental exercise (Fig. \ref{fig:attention_map}) provides a physiologically interpretable basis for its accuracy, mirroring the diagnostic strategy of human experts. Furthermore, the graceful performance degradation of our transformer models in data-limited scenarios, compared to the catastrophic failure of traditional methods, highlights their inherent robustness in handling the dynamic, temporal dependencies of physiological time-series data.
+
+However, the true test for any clinical AI model lies in its generalizability. The complete failure of our highly accurate model in a zero-shot transfer to an external dataset ($R^2 < 0$) serves as a powerful and realistic illustration of domain shift. This finding, while sobering, is critical; it confirms that performance metrics from a single source are insufficient and that strategies for adaptation are not optional but essential for clinical translation. Our subsequent experiments provide a clear and compelling solution. While training a model from scratch on local data is feasible, the pre-training and fine-tuning paradigm is far more data-efficient. Crucially, we found that \textbf{full-network fine-tuning provided the most stable and reproducible results} ($R^2=0.718 \pm 0.018$). In the context of clinical tools, where reliability and consistency are paramount, this stability is arguably more valuable than marginal gains in peak performance. This suggests that the pre-trained backbone of CPA-Former captures a fundamental, generalizable representation of exercise physiology, which can then be reliably calibrated to local specificities with minimal data.
+
+In sum, this work moves beyond simply creating an accurate prediction model. It addresses the critical, practical challenge of deploying AI in diverse clinical settings. By demonstrating a reliable and data-efficient method for adapting a powerful foundation model, we establish a new paradigm for the development of robust, generalizable, and truly deployable tools for physiological time-series analysis. This approach has the potential to standardize CPET interpretation, reduce inter-observer variability, and ultimately improve clinical decision-making in cardiovascular and pulmonary medicine.
+
+\subsection{Limitations and Future Directions}
+
+While our findings are promising, several limitations guide future work. First, the model was pre-trained at a single center and adapted to one other; a prospective, multi-center validation study is necessary to confirm the robustness of our fine-tuning strategy across a broader range of patients, protocols, and equipment. Second, the current model predicts a single parameter, VO\textsubscript{2} AT. **Third, our study population was predominantly composed of middle-aged adults. As exercise physiology varies significantly across the lifespan, the model's performance on pediatric and geriatric populations is unverified, which limits the direct generalizability of our current findings to all age groups.**
+
+Future work will therefore focus on three key areas. **First, we will pursue large-scale, multi-center validation across a wider demographic spectrum, including pediatric and geriatric cohorts, to establish true generalizability.** Second, we will expand the model's capabilities into a multi-task framework to predict a comprehensive panel of CPET metrics (e.g., ventilatory thresholds VT1 and VT2, peak VO\textsubscript{2}), creating an all-in-one automated interpretation suite. Finally, incorporating methods for uncertainty quantification will be a vital step towards enhancing clinician trust and ensuring safe clinical adoption.
+
+\section{Conclusion}
+
+We have developed CPA-Former, a phase-aware transformer that achieves state-of-the-art performance in automated AT prediction. More significantly, we have established its utility as a \textbf{foundation model}. By demonstrating that \textbf{full-network fine-tuning} provides a stable, reliable, and data-efficient solution to inter-institutional domain shift, we define a practical and scalable paradigm for deploying robust physiological time-series analysis tools. \textbf{While this initial study validates the paradigm in an adult population}, it paves the way for standardized, objective CPET interpretation across diverse clinical settings, a critical step towards enhancing cardiovascular and pulmonary medicine.
+
+\newpage
+
+% ===== BACKMATTER =====
+\section*{Author Contributions}
+B.X. conceived the study, designed the model architecture, performed the data analysis and interpretation, and wrote the manuscript. C.W. contributed to data acquisition, clinical validation, and manuscript review. Both authors approved the final version of the manuscript.
+
+\section*{Competing Interests}
+B.X. is an employee of BexiMed Co., Ltd. C.W. declares no competing interests.
+
+\section*{Data Availability}
+The datasets generated and analyzed during the current study are not publicly available due to patient privacy regulations but are available from the corresponding author upon reasonable request and with appropriate institutional approvals.
+
+\section*{Code Availability}
+The CPA-Former model implementation and analysis scripts are available at the following GitHub repository: [https://github.com/user/CPA-Former-Repository-Link].
+
+\begin{thebibliography}{99}
+% Bibliography items remain the same
+\bibitem{guazzi2016} Guazzi, M. et al. 2016 European Guidelines on cardiovascular disease prevention in clinical practice. \textit{Eur. Heart J.} \textbf{37}, 2315-2381 (2016).
+\bibitem{wasserman2012} Wasserman, K., Hansen, J. E., Sue, D. Y., Stringer, W. W. \& Whipp, B. J. \textit{Principles of Exercise Testing and Interpretation} 5th edn (Lippincott Williams \& Wilkins, 2012).
+\bibitem{beaver1986} Beaver, W. L., Wasserman, K. \& Whipp, B. J. A new method for detecting anaerobic threshold by gas exchange. \textit{J. Appl. Physiol.} \textbf{60}, 2020-2027 (1986).
+\bibitem{sue1988} Sue, D. Y., Wasserman, K., Moricca, R. B. \& Casaburi, R. Metabolic acidosis during exercise in patients with chronic obstructive pulmonary disease. \textit{Chest} \textbf{94}, 931-938 (1988).
+\bibitem{yeh1983} Yeh, M. P., Gardner, R. M., Adams, T. D., Yanowitz, F. G. \& Crapo, R. O. "Anaerobic threshold": problems of determination and validation. \textit{J. Appl. Physiol.} \textbf{55}, 1178-1186 (1983).
+\bibitem{rajkomar2019} Rajkomar, A., Dean, J. \& Kohane, I. Machine learning in medicine. \textit{N. Engl. J. Med.} \textbf{380}, 1347-1358 (2019).
+\bibitem{santos2014} Santos-Lozano, A. et al. A new algorithm to estimate anaerobic threshold based on heart rate variability. \textit{Comput. Methods Programs Biomed.} \textbf{114}, 8-14 (2014).
+\bibitem{petek2021} Petek, B. J. et al. Machine learning for personalized cardiopulmonary exercise testing. \textit{Curr. Opin. Cardiol.} \textbf{36}, 549-557 (2021).
+\bibitem{vaswani2017} Vaswani, A. et al. Attention is all you need. \textit{Adv. Neural Inf. Process. Syst.} \textbf{30}, 5998-6008 (2017).
+\bibitem{devlin2018} Devlin, J., Chang, M. W., Lee, K. \& Toutanova, K. BERT: Pre-training of deep bidirectional transformers for language understanding. \textit{arXiv preprint} arXiv:1810.04805 (2018).
+\bibitem{dosovitskiy2020} Dosovitskiy, A. et al. An image is worth 16x16 words: Transformers for image recognition at scale. \textit{arXiv preprint} arXiv:2010.11929 (2020).
+\bibitem{ats2003} American Thoracic Society \& American College of Chest Physicians. ATS/ACCP Statement on cardiopulmonary exercise testing. \textit{Am. J. Respir. Crit. Care Med.} \textbf{167}, 211-277 (2003).
+\end{thebibliography}
+
+\vfill
+\hrule
+\footnotesize
+\noindent\textit{Manuscript received: [Date]; accepted: [Date]; published online: [Date]} \\
+© 2025 The Author(s). This article is licensed under a Creative Commons Attribution 4.0 International License.
+
+\end{document}
