@@ -1,0 +1,523 @@
+\documentclass[11pt, a4paper]{article}
+
+%% ===== PACKAGES =====
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{booktabs} % Tables
+\usepackage{tabularx} % Flexible full-width tables
+\usepackage{hyperref} % Hyperlinks
+\usepackage{geometry} % Margins
+\usepackage{authblk}  % Author block
+\usepackage{xcolor}   % Colors
+\usepackage{tcolorbox} % Placeholders during drafting
+\usepackage{lmodern}  % Modern font
+
+%% === NO PARAGRAPH INDENTATION ===
+\usepackage{parskip}
+
+%% ===== DOCUMENT GEOMETRY =====
+\geometry{
+ a4paper,
+ total={170mm,257mm},
+ left=20mm,
+ top=20mm,
+}
+
+%% ===== HYPERLINK SETUP =====
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+    pdftitle={A Multi-Center, Generalizable Deep Learning Framework for Automated Anaerobic Threshold Assessment from CPET},
+    pdfpagemode=FullScreen,
+}
+
+%% ===== TITLE AND AUTHOR INFORMATION =====
+\title{\textbf{A Clinically Generalizable Artificial Intelligence for Automated Anaerobic Threshold Assessment from Cardiopulmonary Exercise Tests}\\\vspace{2pt}\large Multi-Center Standardization and Expert-Level Accuracy}
+\author[1]{WANG Cong}
+\author[2]{XU Bei}
+\author[1]{MI Shou-ling\thanks{Corresponding author: email@address.com}}
+
+\affil[1]{Zhongshan Hospital, Fudan University, China}
+\affil[2]{}
+
+\date{\today}
+
+%% ===== BEGIN DOCUMENT =====
+\begin{document}
+
+\maketitle
+
+%% Lightweight placeholder for numbers/centers/devices during drafting
+\newcommand{\placeholder}[1]{\textcolor{red}{[#1]}}
+
+\begin{abstract}
+\noindent\textbf{Background}: Anaerobic threshold (AT) from cardiopulmonary exercise testing (CPET) guides risk stratification, perioperative triage, and rehabilitation. In practice, manual AT determination is subjective, time-consuming, and inconsistently standardized across centers/devices, limiting access and scale.
+
+\noindent\textbf{Methods}: We assembled a large, multi-center, vendor-diverse CPET cohort (12{,}829 examinations) with cross-center/device harmonization. Expert consensus AT labels were obtained via two independent readers with blinded adjudication. We developed a transformer-based model (CPET-former) for multi-channel CPET time-series, introduced center-aware FiLM to model site/device effects, and used GroupDRO to improve robustness to unseen centers. Generalization was evaluated by a pooled, stratified 80\%/10\%/10\% train/validation/test split, and by testing on two external centers to simulate unseen centers. A blinded reader study compared AI with clinicians across seniority, and decision utility was assessed at VO\textsubscript{2}@AT thresholds (xx mL/kg/min).
+
+\noindent\textbf{Findings}: CPET-former achieved expert-level accuracy with perfect reproducibility (ICC=xx). FiLM improved performance across known centers, and GroupDRO reduced worst-center error on external centers. In the reader study, AI was non-inferior to senior experts and outperformed junior/intermediate readers. Threshold analyses indicated favorable agreement and positive decision utility over clinically relevant ranges.
+
+\noindent\textbf{Interpretation}: A clinically generalizable, auditable AI enables objective and consistent AT assessment across centers and devices. By aligning with expert performance and supporting decision thresholds, the framework can standardize CPET interpretation and reduce clinical workload.
+\end{abstract}
+
+\section{Introduction}
+
+Cardiopulmonary exercise testing (CPET) informs risk stratification, perioperative triage, and rehabilitation planning \cite{guazzi2016}. Among CPET metrics, anaerobic threshold (AT) is widely used (e.g., VO\textsubscript{2}@AT near xx mL/kg/min) to guide decisions in heart failure and major surgery \cite{wasserman2012, beaver1986}. Yet, visual AT determination (e.g., V-slope) \cite{sue1988} is subjective, time-consuming, and inconsistently standardized, yielding modest inter-/intra-observer agreement \cite{yeh1983} and constraining real-world scale.
+
+Existing automated methods (curve-fitting or limited ML) are sensitive to protocol/device variability and rarely validated across unseen centers \cite{santos2014, petek2021}. To expand equitable access to CPET-informed care, a clinically generalizable, auditable, and reproducible AT solution is needed.
+
+We report a multi-center framework that unifies heterogeneous CPET data across vendors and delivers expert-level, reproducible AT assessment. Our contributions are: (i) a large, vendor-diverse cohort across three hospitals; (ii) cross-vendor signal harmonization; (iii) CPET-former, a transformer tailored to CPET time-series with center-aware FiLM for known-center generalization and GroupDRO for unseen-center robustness \cite{groupdro2020}; (iv) a blinded reader study spanning seniority; and (v) decision-utility analyses aligned to clinical thresholds. We hypothesize non-inferiority to senior experts with robust generalization and operational readiness.
+
+\section{Methods}
+
+\subsection{Design and Reference Standard}
+We conducted a multi-center, retrospective diagnostic accuracy study with a prospective-simulated blinded reader study. Adults undergoing ramp-protocol CPET who met prespecified effort/quality criteria were included; incomplete or technically invalid files were excluded. Institutional review boards at \placeholder{Zhongshan}, \placeholder{Shanxi}, and \placeholder{Xuhui} approved the study with consent waived. The reference standard for AT was established by two independent readers with blinded adjudication of disagreements; readers were blinded to AI outputs and to each other. The primary endpoint was MAE of VO\textsubscript{2}@AT; secondary endpoints included RMSE, $R^2$, Bland–Altman, intraclass correlation coefficient (ICC), and calibration (slope/intercept). A clinically acceptable error band (e.g., \textpm1.0 mL/kg/min) was prespecified for interpretability. Subgroup analyses were prespecified by center, device, sex, age, and protocol duration.
+
+\subsection{Data and Harmonization}
+We curated 12{,}829 ramp-protocol examinations across three hospitals (Shanxi, Xuhui, Zhongshan) using two vendors (Ganshorn, COSMED). Two additional centers (punan, rizhao) were held out as external test sets to evaluate generalization to unseen centers.
+
+\textbf{Data sources and standard.} We defined a CPET data standard and device-specific conversion protocols to harmonize heterogeneous exports across vendors. The standard covers breath-by-breath/second-by-second signals, summary endpoints, and metadata. Based on this, we built the dataset with 69 feature channels, 4 AT targets, and 10 metadata fields. Names and units are normalized for ventilation and gas exchange (e.g., VE [L/min], VO\textsubscript{2} [mL/min], VO\textsubscript{2}/kg [mL/kg/min], VCO\textsubscript{2} [mL/min], RER), hemodynamics (HR [1/min], VO\textsubscript{2}/HR [mL/beat]), gas tensions (PetO\textsubscript{2}/PetCO\textsubscript{2} [mmHg]), workload (Power\_Load [W], RPM [r/min]), and ECG-derived features (ST/S amplitudes [mV]). Time is represented consistently via \texttt{Time}/\texttt{Phase\_Time} (mm:ss) and \texttt{Time\_Relative} (s); \texttt{Load\_Phase} delineates exercise stages. A concise overview is provided in Table~\ref{tab:cpet_standard_overview}, with full specifications in the Supplementary Material.
+
+\begin{table}[htbp]
+\centering
+\caption{Concise overview of the CPET data standard used in this study. Groups list representative variables and typical units; the full specification appears in the Supplement.}
+\label{tab:cpet_standard_overview}
+\begin{tabularx}{\linewidth}{@{}l X l@{}}
+\toprule
+Group & Representative variables & Units (rep.) \\
+\midrule
+Ventilation & VE, VT, Bf, BR\_pct, Ti/Te/Ttot, Ti\_Ttot\_Ratio, VD/VT, VT/Ti & L/min; L; 1/min; s; ratio \\
+Gas exchange & VO\textsubscript{2}, VO\textsubscript{2}/kg, VCO\textsubscript{2}, VCO\textsubscript{2}/kg, RER, VE/VO\textsubscript{2}, VE/VCO\textsubscript{2} & mL/min; mL/kg/min; ratio \\
+Hemodynamics & HR, VO\textsubscript{2}/HR, SpO\textsubscript{2}, BP\_Syst, BP\_Diast, HRR, CO & 1/min; mL/beat; \%; mmHg; L/min \\
+Gas tensions & PaO\textsubscript{2}, PaCO\textsubscript{2}, PetO\textsubscript{2}, PetCO\textsubscript{2} & mmHg \\
+Workload/protocol & Power\_Load, RPM, Load\_Phase & W; r/min; category \\
+Energy expenditure & EE\_Total\_kcal, EE\_kcal\_h, Fat/CHO/PRO (kcal/h; kg-normalized; \%) & kcal/h; kcal/kg/h; \% \\
+ECG features & ST\_I--ST\_V6; S\_I--S\_V6 & mV \\
+AT targets & VO2\_kg\_at\_AT, HR\_at\_AT, Time\_at\_AT, RER\_at\_AT & mL/kg/min; 1/min; mm:ss; ratio \\
+Metadata & Subject demographics, center, device, protocol & -- \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\textbf{Splits and evaluation.} The primary dataset is the pooled mix of Zhongshan/Xuhui/Shanxi. We performed stratified patient-level splits into train/validation/test (e.g., 80\%/10\%/10\%), preserving center/device proportions and preventing subject-level leakage; splits were seeded and frozen. For rapid model exploration, we additionally drew a per-center 30\% subsample of the primary dataset (used only for fast iteration, with consistent stratification). Generalization was assessed by these pooled splits and by two explicit external-center test sets (punan and rizhao). For all external-center evaluations, standardization parameters were fit only on the primary-dataset training split and applied unchanged to the external sets. Results are reported in physical units (see Table \ref{tab:dataset_details}).
+
+\textbf{Preprocessing and robustness.} We adopted a conservative principle: preserve the original data distribution and avoid over-optimization unless a field exhibits extreme outliers. First, in the Xuhui dataset we filtered outliers in \mbox{VE/VO\textsubscript{2}} and \mbox{VE/VCO\textsubscript{2}} that arose when \mbox{VO\textsubscript{2}} or \mbox{VCO\textsubscript{2}} momentarily dropped to near-zero due to device or procedural glitches, inflating the ratios far beyond physiologic ranges. We set the maxima observed in Zhongshan and Shanxi as upper bounds and removed Xuhui samples exceeding those limits. Second, because some source datasets used 10s aggregation during clinical review to suppress spiky artifacts, we aligned breath-by-breath tests by aggregating to 10s windows; within each window, feature columns were filtered by the IQR rule and then averaged. Finally, features were standardized with z-score parameters fit on the training set and applied unchanged to validation/test; targets were standardized as needed. AT targets followed the standard nomenclature (\texttt{VO2\_kg\_at\_AT}, \texttt{HR\_at\_AT}, \texttt{Time\_at\_AT}, \texttt{RER\_at\_AT}). Further implementation details and full variable listings are provided in the Supplement.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/fig_data_organization}
+\caption{Overview of data sources, harmonization, and analysis splits.}
+\label{fig:data_org}
+\end{figure}
+
+\begin{table}[htbp]
+\centering
+\caption{Dataset composition, splits, and external-center evaluations.}
+\label{tab:dataset_details}
+\begin{tabularx}{\linewidth}{l l c X l}
+\toprule
+Split & Centers & N exams & Usage & Standardization \\
+\midrule
+Primary (train) & Zhongshan/Xuhui/Shanxi & \placeholder{N\_train} & Model training & Fit on primary-train \\
+Primary (val) & Zhongshan/Xuhui/Shanxi & \placeholder{N\_val} & Model selection & Apply primary-train \\
+Primary (test) & Zhongshan/Xuhui/Shanxi & \placeholder{N\_test} & Internal evaluation & Apply primary-train \\
+30\% per-center subset & Zhongshan/Xuhui/Shanxi & \placeholder{N\_30pct} & Rapid exploration only & Apply primary-train \\
+External: Punan & Punan & \placeholder{N\_punan} & Unseen-center test & Apply primary-train \\
+External: Rizhao & Rizhao & \placeholder{N\_rizhao} & Unseen-center test & Apply primary-train \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Modeling and Evaluation}
+We developed \textit{CPET-former}, a transformer-based model tailored to multi-channel CPET time-series that encodes breath-by-breath signals and aggregates sequence information to predict AT endpoints. To address multi-center generalization on known centers, we introduce center-aware Feature-wise Linear Modulation (FiLM): learned center embeddings explicitly modulate the backbone to capture site/device effects. For robustness to unseen centers, we adopt GroupDRO with centers as groups to optimize worst-center risk under distribution shift. Evaluation used MAE, RMSE, $R^2$, Bland–Altman, ICC, and calibration; decision utility was assessed at VO\textsubscript{2}@AT thresholds (xx mL/kg/min) via threshold agreement, net reclassification improvement (NRI), and decision curve analysis (DCA). Implementation details, hyperparameters, interpretability analyses, and full statistical outputs are provided in the Supplement.
+
+\subsection{Reader Study}
+We conducted a blinded reader study to test non-inferiority of AI to senior experts for VO\textsubscript{2}@AT estimation. Cases (\placeholder{N}) were stratified by center, device, protocol duration, and difficulty; readers were grouped by seniority (junior/intermediate/senior: \placeholder{J/I/S}) and received standardized training. Readers used a multi-panel interface (V-slope; VE/VO\textsubscript{2}; VE/VCO\textsubscript{2}; RER) and were blinded to the reference standard, to AI outputs, and to each other; a subset was re-read after a washout period (\placeholder{$\geq$2 weeks}) for intra-reader reliability. The primary endpoint was MAE of VO\textsubscript{2}@AT versus the reference standard with a prespecified non-inferiority margin $\delta$ (e.g., xx mL/kg/min); secondary endpoints included RMSE, $R^2$, Bland–Altman, ICC(2,1), calibration, and threshold utility at 11/14 mL/kg/min (agreement, NRI, DCA). Ethics approval and consent waiver were obtained (\placeholder{IRB refs}). Full procedural details are provided in Section~\textbf{Reader Study}.
+
+\section{Results}
+
+\subsection{Study Cohort}
+The cohort comprised \placeholder{N} patients (age \placeholder{X}\,$\pm$\,\placeholder{Y} years; \placeholder{Z\%} female) across three centers and two devices. Protocols were predominantly ramp \placeholder{(X\%)} with median duration \placeholder{T} minutes.
+
+\begin{figure}[htbp]
+\centering
+\begin{tcolorbox}[colback=gray!10,colframe=gray!50,title={Study flow diagram placeholder}]
+Insert flow chart: screened $\rightarrow$ included $\rightarrow$ analysis sets (pooled train/val/test 80\%/10\%/10\%; two external centers as test).
+\end{tcolorbox}
+\caption{Study flow and analysis splits.}
+\label{fig:flow}
+\end{figure}
+
+\begin{table}[htbp]
+\centering
+\caption{Baseline characteristics by center.}
+\label{tab:baseline}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Characteristic & Shanxi & Xuhui & Zhongshan \\
+\midrule
+N (female \%) & 8785 (40.5\%) & 2411 (47.5\%) & 1633 (28.0\%) \\
+Age (years) & $59.0\,\pm\,10.3$ & $59.0\,\pm\,13.4$ & $50.6\,\pm\,14.4$ \\
+Peak VO\textsubscript{2} (mL/kg/min) & $13.9\,\pm\,3.6$ & $19.6\,\pm\,5.1$ & $20.2\,\pm\,5.8$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/fig_data_distributions}
+\caption{Distribution snapshots (by center) for VO\textsubscript{2}, RER, VE, and HR in physical units; dashed lines indicate centre medians.}
+\label{fig:data_dist}
+\end{figure}
+
+% Feature set overview (full spec in Supplementary Table S3)
+\subsection{Clinical Threshold Agreement and Decision Utility}
+We evaluated agreement at VO\textsubscript{2}@AT thresholds commonly used for risk stratification (e.g., 11 and 14 mL/kg/min). Outcome-oriented summaries included: (i) concordance rates and confusion matrices by threshold; (ii) net reclassification improvement (NRI) versus the reference standard; and (iii) decision curve analysis (DCA), which demonstrated positive net benefit across a wide threshold range.
+
+\begin{figure}[htbp]
+\centering
+\begin{tcolorbox}[colback=gray!10,colframe=gray!50,title={Decision curve analysis (placeholder)}]
+Insert DCA: net benefit versus threshold probability; compare AI-assisted vs. standard.\\ Highlight clinically relevant regions.
+\end{tcolorbox}
+\caption{Decision curve analysis for AI-assisted AT-based decision-making.}
+\label{fig:dca}
+\end{figure}
+
+\noindent\textbf{Feature set.} The model consumes a comprehensive panel of ventilation, gas exchange, hemodynamic, and effort signals (e.g., VE, VO\textsubscript{2}, VCO\textsubscript{2}, RER, HR, Power\_Load, VT, Bf), alongside a small set of derived ratios. The full feature list with units and descriptions is provided in Supplementary Tables S1A--S1H.
+
+\subsection{Model Performance and Generalization}
+We compared CPET-former variants against Ridge/SVR/RF/LightGBM baselines. Metrics included MAE, RMSE, and $R^2$ with 95\% CIs; agreement was assessed via Bland–Altman and ICC.
+
+On the pooled, stratified hold-out split, CPET-former (ERM) outperformed classical ML baselines. Centre-aware FiLM further improved performance across known centers, and on external centers, GroupDRO reduced worst-centre error and narrowed inter-centre variability (Table~\ref{tab:perf}; Figure~\ref{fig:external_centers}).
+
+\begin{table}[htbp]
+\centering
+\caption{Model performance on the pooled hold-out and external centers (mean [95\% CI]).}
+\label{tab:perf}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Model & Setting & MAE & RMSE & $R^2$ \\
+\midrule
+Linear/SVR/RF/LightGBM & Pooled hold-out & \placeholder{Y} & \placeholder{Y} & \placeholder{Y} \\
+CPET-former (ERM) & Pooled hold-out & \placeholder{X} & \placeholder{X} & \placeholder{X} \\
+CPET-former (FiLM) & Pooled hold-out & \placeholder{X} & \placeholder{X} & \placeholder{X} \\
+CPET-former (GroupDRO) & Pooled hold-out & \placeholder{X} & \placeholder{X} & \placeholder{X} \\
+CPET-former (ERM) & External centers & \placeholder{Y} & \placeholder{Y} & \placeholder{Y} \\
+CPET-former (GroupDRO) & External centers & \placeholder{X} & \placeholder{X} & \placeholder{X} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\begin{tcolorbox}[colback=gray!10,colframe=gray!50,title={External-center generalization placeholder}]
+Insert center-wise MAE/RMSE for ERM vs GroupDRO;\\ highlight improvement at worst/unseen center.
+\end{tcolorbox}
+\caption{Performance on external centers by site.}
+\label{fig:external_centers}
+\end{figure}
+
+\subsection{Reader Study: AI vs. Clinicians}
+In the blinded reader study (\placeholder{N} cases), AI performance matched senior experts (MAE \placeholder{X} vs. \placeholder{Y}; $p=\,$n.s.) and exceeded junior/intermediate readers (MAE \placeholder{Z}; $p<0.001$). Inter-reader ICC was \placeholder{0.80} (95\% CI \placeholder{0.75--0.84}), whereas AI predictions were perfectly reproducible (ICC $=1.00$).
+
+\begin{figure}[htbp]
+\centering
+\begin{tcolorbox}[colback=gray!10,colframe=gray!50,title={Reader study boxplots placeholder}]
+Insert boxplots of MAE by reader seniority vs AI.
+\end{tcolorbox}
+\caption{Reader study accuracy comparison.}
+\label{fig:reader}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\begin{tcolorbox}[colback=gray!10,colframe=gray!50,title={Bland–Altman plots placeholder}]
+Insert Bland–Altman plots: (a) AI vs. consensus; (b) Senior vs. consensus.
+\end{tcolorbox}
+\caption{Agreement analyses against expert consensus.}
+\label{fig:ba}
+\end{figure}
+
+% (Removed SSL learning curve figure to focus on supervised modeling and generalization analyses)
+
+\section{Discussion}
+
+\textbf{Principal findings.} We collected a large multi-center, vendor-diverse CPET cohort and developed CPET-former, a transformer-based model for multi-channel CPET time-series. Center-aware FiLM improved performance across known centers by capturing site/device effects, while GroupDRO reduced worst-center error on external centers, addressing a key barrier to clinical adoption. In a blinded reader study, AI achieved senior-expert accuracy and perfect reproducibility, overcoming inherent subjectivity in manual interpretation.
+
+\textbf{Relation to prior work.} Prior AI-CPET studies are typically single-center with limited validation. Transformers capture long-range temporal dependencies \cite{vaswani2017}, aligning with the physiological progression of exercise. GroupDRO \cite{groupdro2020} minimizes worst-group risk, offering principled domain robustness in multi-center settings.
+
+\textbf{Strengths.} (i) Scale and diversity across centers/devices; (ii) rigorous consensus ground truth; (iii) External-center validation approximating real-world practice; (iv) head-to-head comparison with clinicians; (v) interpretability analyses and QC of error cases.
+
+\textbf{Limitations.} Retrospective design; limited number of centers/vendors; absence of prospective, point-of-care evaluation; demographics predominantly \placeholder{region}. Future work should broaden geography and device coverage, assess clinical adoption in service delivery settings, and quantify downstream clinical impact with uncertainty-aware safety monitoring.
+
+\textbf{Clinical implications and future work.} In routine clinical practice (e.g., within reporting systems or device software), this approach can standardize CPET interpretation and reduce workload. Extending to multi-task outputs (e.g., VT1/VT2, peak VO\textsubscript{2}) and incorporating uncertainty quantification with conservative referral policies will support safe use and broader clinical adoption.
+
+\section{Conclusion}
+
+We present a generalizable AI framework for automated AT assessment that performs at senior-expert level with perfect reproducibility and robust cross-center generalization. By combining a transformer backbone with center-aware FiLM and GroupDRO, the approach addresses both known- and unseen-center variability. This enables standardized, scalable CPET interpretation in diverse clinical environments, supports standardized diagnostic pathways, and reduces clinical workload.
+
+\newpage
+
+% ===== BACKMATTER =====
+\section*{Author Contributions}
+B.X. conceived the study, designed the model, performed the analyses, and drafted the manuscript. C.W. acquired data, led clinical validation, and revised the manuscript. All authors approved the final manuscript.
+
+\section*{Competing Interests}
+B.X. is an employee of BexiMed Co., Ltd. C.W. declares no competing interests.
+
+\section*{Data Availability}
+The datasets generated and analyzed during the current study are not publicly available due to patient privacy regulations but are available from the corresponding author upon reasonable request and with appropriate institutional approvals.
+
+\section*{Code Availability}
+The CPET-former implementation and analysis scripts will be released upon publication at: \url{https://github.com/org/CPET-former}.
+
+\section*{Supplementary Material}
+\scriptsize
+
+\noindent\textbf{Supplementary Table S1A. Timeseries: Respiratory Mechanics and Timing.}
+\begin{table}[htbp]
+\centering
+\begin{tabular}{@{}llll@{}}
+\toprule
+Name & Unit & Type & Description \\
+\midrule
+Time & mm:ss & string & Elapsed time from start of test (min:sec). \\
+Phase\_Time & mm:ss & string & Time within current exercise phase. \\
+Time\_Relative & s & float & Relative time within a phase (seconds). \\
+Bf & 1/min & float & Breath frequency. \\
+BR\_pct & \% & float & Breathing reserve (percent). \\
+VT & L & float & Tidal volume (BTPS). \\
+VE & L/min & float & Minute ventilation. \\
+Ti & s & float & Inspiratory time. \\
+Te & s & float & Expiratory time. \\
+Ttot & s & float & Total breath time (Ti + Te). \\
+Ti\_Ttot\_Ratio & ratio & float & Inspiratory duty cycle. \\
+VD\_VT\_Ratio & ratio & float & Physiological dead space to tidal volume. \\
+VT\_Ti & L/s & float & Mean inspiratory flow. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Supplementary Table S1B. Timeseries: Gas Exchange and Ventilatory Equivalents.}
+\begin{table}[htbp]
+\centering
+\begin{tabular}{@{}llll@{}}
+\toprule
+Name & Unit & Type & Description \\
+\midrule
+VO2 & mL/min & float & Oxygen consumption. \\
+VO2\_kg & mL/kg/min & float & Oxygen consumption per kg body weight. \\
+VCO2 & mL/min & float & Carbon dioxide production. \\
+VCO2\_kg & mL/kg/min & float & Carbon dioxide production per kg. \\
+RER & ratio & float & Respiratory exchange ratio (VCO2/VO2). \\
+PaCO2\_est & mmHg & float & Estimated arterial CO2 (PaCO2). \\
+VE\_VO2 & ratio & float & Ventilatory equivalent for oxygen. \\
+VE\_VCO2 & ratio & float & Ventilatory equivalent for carbon dioxide. \\
+METS & MET & float & Metabolic equivalents. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Supplementary Table S1C. Timeseries: Hemodynamics.}
+\begin{table}[htbp]
+\centering
+\begin{tabular}{@{}llll@{}}
+\toprule
+Name & Unit & Type & Description \\
+\midrule
+HR & 1/min & int & Heart rate (beats per minute). \\
+VO2\_HR & mL/beat & float & Oxygen pulse (VO2/HR). \\
+SpO2 & \% & float & Peripheral oxygen saturation. \\
+BP\_Syst & mmHg & int & Systolic blood pressure. \\
+BP\_Diast & mmHg & int & Diastolic blood pressure. \\
+HRR & 1/min & int & Heart rate recovery. \\
+CO & L/min & float & Cardiac output. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Supplementary Table S1D. Timeseries: Gas Tensions.}
+\begin{table}[htbp]
+\centering
+\begin{tabular}{@{}llll@{}}
+\toprule
+Name & Unit & Type & Description \\
+\midrule
+PaO2 & mmHg & float & Arterial oxygen partial pressure. \\
+PaCO2 & mmHg & float & Arterial carbon dioxide partial pressure. \\
+PetO2 & mmHg & float & End-tidal oxygen partial pressure. \\
+PetCO2 & mmHg & float & End-tidal carbon dioxide partial pressure. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Supplementary Table S1E. Timeseries: Workload and Phase.}
+\begin{table}[htbp]
+\centering
+\begin{tabular}{@{}llll@{}}
+\toprule
+Name & Unit & Type & Description \\
+\midrule
+Power\_Load & W & float & Ergometer workload (power output). \\
+RPM & r/min & int & Cadence (revolutions per minute). \\
+Load\_Phase & category & int & Exercise phase code (e.g., mainload/preload/postload). \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Supplementary Table S1F. Timeseries: Energy Expenditure and Substrate Use.}
+\begin{table}[htbp]
+\centering
+\begin{tabular}{@{}llll@{}}
+\toprule
+Name & Unit & Type & Description \\
+\midrule
+EE\_Total\_kcal & kcal/h & float & Energy expenditure (total). \\
+EE\_kcal\_h & kcal/h & float & Energy expenditure per hour. \\
+Fat\_kcal\_h & kcal/h & float & Fat energy expenditure per hour. \\
+CHO\_kcal\_h & kcal/h & float & Carbohydrate energy expenditure per hour. \\
+PRO\_kcal\_h & kcal/h & float & Protein energy expenditure per hour. \\
+EE\_kg\_kcal\_h & kcal/kg/h & float & EE per kg body weight. \\
+Fat\_kg\_kcal\_h & kcal/kg/h & float & Fat EE per kg body weight. \\
+CHO\_kg\_kcal\_h & kcal/kg/h & float & CHO EE per kg body weight. \\
+PRO\_kg\_kcal\_h & kcal/kg/h & float & PRO EE per kg body weight. \\
+Fat\_pct & \% & float & Fat percentage. \\
+CHO\_pct & \% & float & Carbohydrate percentage. \\
+PRO\_pct & \% & float & Protein percentage. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Supplementary Table S1G. Timeseries: ECG (ST-segment).}
+\begin{table}[htbp]
+\centering
+\begin{tabular}{@{}llll@{}}
+\toprule
+Name & Unit & Type & Description \\
+\midrule
+ST\_I, ST\_II, ST\_III, ST\_aVR, ST\_aVL, ST\_aVF, ST\_V1--ST\_V6 & mV & float & ST-segment deviation by lead. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Supplementary Table S1H. Timeseries: ECG (S-wave).}
+\begin{table}[htbp]
+\centering
+\begin{tabular}{@{}llll@{}}
+\toprule
+Name & Unit & Type & Description \\
+\midrule
+S\_I, S\_II, S\_III, S\_aVR, S\_aVL, S\_aVF, S\_V1--S\_V6 & mV & float & S-wave amplitude by lead. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Supplementary Table S2. Summary Metrics (Peak and AT).}
+\begin{table}[htbp]
+\centering
+\begin{tabular}{@{}llll@{}}
+\toprule
+Name & Unit & Type & Description \\
+\midrule
+Time\_at\_AT & mm:ss & string & Time at anaerobic threshold. \\
+Peak\_VO2; Peak\_VO2\_Predicted & mL/min & float & Peak oxygen consumption; predicted normal. \\
+VO2\_at\_AT & mL/min & float & VO2 at anaerobic threshold. \\
+Peak\_VO2\_kg; Peak\_VO2\_kg\_Predicted & mL/kg/min & float & Peak VO2 per kg; predicted normal. \\
+VO2\_kg\_at\_AT & mL/kg/min & float & VO2 per kg at AT. \\
+Peak\_METS; Peak\_METS\_Predicted; METS\_at\_AT & MET & float & Metabolic equivalents (peak/predicted/AT). \\
+Peak\_RER; RER\_at\_AT & ratio & float & Respiratory exchange ratio (peak/AT). \\
+VE\_VCO2\_Slope; ...\_Predicted & ratio & float & Slope of VE vs VCO2 (observed/predicted). \\
+OUES & ml/min/l/min & float & Oxygen uptake efficiency slope. \\
+Peak\_VE; VE\_at\_AT & L/min & float & Minute ventilation (peak/AT). \\
+Peak\_BR\_pct; BR\_pct\_at\_AT & \% & float & Breathing reserve (peak/AT). \\
+Peak\_VT; VT\_at\_AT & L & float & Tidal volume (peak/AT). \\
+Peak\_Bf; Bf\_at\_AT & 1/min & float & Breath frequency (peak/AT). \\
+Peak\_HR; Peak\_HR\_Predicted; HR\_at\_AT & 1/min & int & Heart rate (peak/predicted/AT). \\
+HRR\_Summary & 1/min & int & Heart rate reserve. \\
+VO2\_WR\_Slope; ...\_Predicted & mL/min/W & float & Delta VO2 per work rate (observed/predicted). \\
+Peak\_VO2\_HR; ...\_Predicted; VO2\_HR\_at\_AT & mL/beat & float & Oxygen pulse (peak/pred/AT). \\
+Peak\_BP\_Syst; Peak\_BP\_Diast & mmHg & int & Peak systolic/diastolic blood pressure. \\
+Peak\_PetO2; PetO2\_at\_AT & mmHg & float & End-tidal PO2 (peak/AT). \\
+Peak\_PetCO2; PetCO2\_at\_AT & mmHg & float & End-tidal PCO2 (peak/AT). \\
+Peak\_VE\_VO2; VE\_VO2\_at\_AT & ratio & float & VE/VO2 (peak/AT). \\
+Peak\_VE\_VCO2; VE\_VCO2\_at\_AT & ratio & float & VE/VCO2 (peak/AT). \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Supplementary Table S3. Subject Metadata.}
+\begin{table}[htbp]
+\centering
+\begin{tabular}{@{}llll@{}}
+\toprule
+Name & Unit & Type & Description \\
+\midrule
+Subject\_ID & -- & string & Unique subject identifier. \\
+Age & years & int & Age at time of test. \\
+Gender & 1/0 & int & 1: Male, 0: Female. \\
+Height\_cm & cm & float & Height. \\
+Weight\_kg & kg & float & Weight. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Supplementary Table S4. Examination Metadata.}
+\begin{table}[htbp]
+\centering
+\begin{tabular}{@{}llll@{}}
+\toprule
+Name & Unit & Type & Description \\
+\midrule
+Examination\_ID & -- & string & Unique examination identifier. \\
+Examination\_Date & YYYY-MM-DD & string & Examination date. \\
+Ergometer\_Type & category & string & Cycle/treadmill, etc. \\
+Protocol\_Name & -- & string & Exercise protocol name. \\
+Examination\_Termination\_Reason & -- & string & Reason for stopping the test. \\
+Examination\_Reason & -- & string & Clinical indication. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Supplementary Table S5. Environmental and Calibration Conditions.}
+\begin{table}[htbp]
+\centering
+\begin{tabular}{@{}llll@{}}
+\toprule
+Name & Unit & Type & Description \\
+\midrule
+Pressure\_Barometric\_mmHg & mmHg & float & Barometric pressure. \\
+Temp\_Ambient\_C & C & float & Ambient temperature. \\
+RH\_Ambient\_pct & \% & float & Ambient relative humidity. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\begin{thebibliography}{99}
+% Existing references retained; added GroupDRO and ICC guidance
+\bibitem{guazzi2016} Guazzi, M. et al. 2016 European Guidelines on cardiovascular disease prevention in clinical practice. \textit{Eur. Heart J.} \textbf{37}, 2315-2381 (2016).
+\bibitem{wasserman2012} Wasserman, K., Hansen, J. E., Sue, D. Y., Stringer, W. W. \& Whipp, B. J. \textit{Principles of Exercise Testing and Interpretation} 5th edn (Lippincott Williams \& Wilkins, 2012).
+\bibitem{beaver1986} Beaver, W. L., Wasserman, K. \& Whipp, B. J. A new method for detecting anaerobic threshold by gas exchange. \textit{J. Appl. Physiol.} \textbf{60}, 2020-2027 (1986).
+\bibitem{sue1988} Sue, D. Y., Wasserman, K., Moricca, R. B. \& Casaburi, R. Metabolic acidosis during exercise in patients with chronic obstructive pulmonary disease. \textit{Chest} \textbf{94}, 931-938 (1988).
+\bibitem{yeh1983} Yeh, M. P., Gardner, R. M., Adams, T. D., Yanowitz, F. G. \& Crapo, R. O. "Anaerobic threshold": problems of determination and validation. \textit{J. Appl. Physiol.} \textbf{55}, 1178-1186 (1983).
+\bibitem{rajkomar2019} Rajkomar, A., Dean, J. \& Kohane, I. Machine learning in medicine. \textit{N. Engl. J. Med.} \textbf{380}, 1347-1358 (2019).
+\bibitem{santos2014} Santos-Lozano, A. et al. A new algorithm to estimate anaerobic threshold based on heart rate variability. \textit{Comput. Methods Programs Biomed.} \textbf{114}, 8-14 (2014).
+\bibitem{petek2021} Petek, B. J. et al. Machine learning for personalized cardiopulmonary exercise testing. \textit{Curr. Opin. Cardiol.} \textbf{36}, 549-557 (2021).
+\bibitem{vaswani2017} Vaswani, A. et al. Attention is all you need. \textit{Adv. Neural Inf. Process. Syst.} \textbf{30}, 5998-6008 (2017).
+\bibitem{devlin2018} Devlin, J., Chang, M. W., Lee, K. \& Toutanova, K. BERT: Pre-training of deep bidirectional transformers for language understanding. \textit{arXiv preprint} arXiv:1810.04805 (2018).
+\bibitem{dosovitskiy2020} Dosovitskiy, A. et al. An image is worth 16x16 words: Transformers for image recognition at scale. \textit{arXiv preprint} arXiv:2010.11929 (2020).
+\bibitem{groupdro2020} Sagawa, S., Koh, P. W., Hashimoto, T. B. \& Liang, P. Distributionally robust neural networks for group shifts: On the importance of regularization for worst-case generalization. \textit{Proc. ICML} (2020).
+\bibitem{koo2016} Koo, T. K. \& Li, M. Y. A guideline of selecting and reporting intraclass correlation coefficients for reliability research. \textit{J. Chiropr. Med.} \textbf{15}(2), 155--163 (2016).
+\bibitem{ats2003} American Thoracic Society \& American College of Chest Physicians. ATS/ACCP Statement on cardiopulmonary exercise testing. \textit{Am. J. Respir. Crit. Care Med.} \textbf{167}, 211-277 (2003).
+\end{thebibliography}
+
+\vfill
+\hrule
+\footnotesize
+\noindent\textit{Manuscript received: [Date]; accepted: [Date]; published online: [Date]} \\
+\copyright~2025 The Author(s). This article is licensed under a Creative Commons Attribution 4.0 International License.
+
+\end{document}

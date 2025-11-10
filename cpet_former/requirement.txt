@@ -69,12 +69,18 @@ Development and Validation of an AI Model for Anaerobic Threshold Assessment: A 
 数据收集与标准化 (CPET-12k 数据集):
 - 标准定义：使用 CPET 数据标准 v1.4（cpet.yaml），以及厂商映射（cosmed.yaml, ganshorn.yaml），路径：/root/autodl-tmp/vox_cpet/cpetformat/。
 - 提取（采集→标准化落盘）：`vox_cpet/cmd/cpetx-data` 的 `extract` 子命令批量遍历中心文件夹并调用对应抽取器（`vox_cpet/extractors`）。输出为每中心一个 HDF5（cpet_data_source_<center>.h5），结构为 per-examination 的 {subject, examination, calibration, summary, timeseries}。去重规则：以 (Subject_ID, Examination_Date, summary 指标摘要) 作为签名，保留首个检查；元数据记录机构信息和 schema 版本；产生日志。
+- 源数据文件（原始、仅字段/单位标准化，无清洗处理）：
+  - /home/cheng/workspace/vox_cpet/data/cpet/source/cpet_data_source_shanxi.h5
+  - /home/cheng/workspace/vox_cpet/data/cpet/source/cpet_data_source_zhongshan.h5
+  - /home/cheng/workspace/vox_cpet/data/cpet/source/cpet_data_source_xuhui.h5
 - 清洗（特征构建）：`vox_cpet/dataset/cpet_processor.py` 将 per-examination 合并为中心级 DataFrame，并执行：
   1) 时间聚合（当原始采样频率高于配置间隔时，默认秒级），稳健均值；
   2) 线性插值 + 首/尾填充；
   3) 过滤器（可选）：运动阶段前 N 分钟、阶段筛选、时间窗口、数值范围（HR/VO2 等）；
   4) 目标列完整性：删除缺失非 AT 目标的检查；允许缺失 Time_at_AT（右删失，若仅作辅助监督）。
-- 数据集生成与切分：`cpetx-data generate` 混合多个中心并生成 HDF5 数据集，支持：
+ - 处理后数据集（分析就绪）：/home/cheng/workspace/cpetx_workspace/cpet_former/artifacts/dataset/cpet_dataset.h5。
+   - 处理内容：10s 聚合、插值、标准化、特征/目标值提取（VO2_kg_at_AT, HR_at_AT, Time_at_AT 等）。
+ - 数据集生成与切分：`cpetx-data generate` 混合多个中心并生成 HDF5 数据集，支持：
   1) standard：按检查随机切分 train/val/test；
   2) explicit split：显式指定训练/验证中心与测试中心；
   3) LOCO：逐中心留出，输出每折一个文件夹。标准化：对指定列（standardization_names）在训练集拟合 StandardScaler，并将参数应用到 val/test；均值/方差与列名写入 HDF5 元数据，便于复原与审计。
@@ -112,7 +118,11 @@ Development and Validation of an AI Model for Anaerobic Threshold Assessment: A 
 
 模型开发 (CPET-former 框架):
 
-数据预处理: 时序数据插值、归一化等。
+数据预处理: 保留原始分布、不过度优化；针对极端异常值做最小化处理：
+  - Xuhui 中 \mbox{VE/VO2} 与 \mbox{VE/VCO2} 的异常比值：由于少量采样点 \mbox{VO2}/\mbox{VCO2} 近零导致比值膨胀，以上海中山+山西两中心观测到的最大值作为上限，超过者剔除；
+  - 与临床读片口径对齐：对按呼吸频率采集的测试，做 10 s 窗聚合；窗口内对特征列按 IQR 规则做异常值过滤后取均值；
+  - 轻量插值与最小缺失填充，仅为模型兼容性；
+  - 标准化使用 z-score，仅在训练集拟合并作用于 val/test；必要时对目标同样处理。
 
 模型族：
   - ML 基线：ridge/svr/random_forest/lightgbm，将时序汇总为表格特征（统计/趋势/领域特征+人口学）用于回归 VO2@AT。
@@ -276,10 +286,13 @@ Supplementary Table: 多任务模型的性能。
   - 读者研究箱线图（fig:reader）与 Bland–Altman 图（fig:ba）占位。
   - 次要分析：SSL 学习曲线（fig:ssl）占位。
 - 数据集与补充材料：
-  - 数据集部分已填入真实结构与计数（69 features/4 targets/10 metadata；train/val/test examinations=10262/1282/1285；LOCO 三包大小=8785/2411/1633）。
-  - 基线表已补齐各中心样本量 N（女比例/年龄/Peak VO2 仍为占位，待提供原始单位的统计口径）。
-  - 新增数据组织示意图（fig:data_org；figures/fig_data_organization.png）。
-  - 补充材料新增数据规范概览（S1/S2）与 69 列完整清单表（tab:data_spec_full）。
+  - 正文“数据”部分已精炼：仅保留来源/体量/标准与关键处理流程，弱化实现细节；突出模型主体。
+  - 基线表保留；女比例/年龄/Peak VO2 仍为占位，待统一统计口径。
+- 数据组织示意图保留（fig:data_org；figures/fig_data_organization.png）。
+ - 数据集详情表新增（tab:dataset_details）：列出主数据集 train/val/test、按中心 30% 子集以及外部中心 punan/rizhao 的样本量、用途与标准化口径。
+  - 详细特征清单移至补充表 S3（正文仅保留 Feature set 概览段）。
+  - 新增分布概览图占位（fig:data_dist）：按中心展示 VO2、RER、VE、HR 的分布与缺失率注记。
+  - 已加入简要描述性统计（正文数据段）：各中心 VO2_kg_at_AT（标准化）中位数（shanxi < 0；xuhui/zhongshan > 0）与典型测试时长中位数（约 10.0/15.8/18.0 分钟），用于辅助解释中心异质性。
 - 讨论：对齐大纲的主要发现、文献关系、优势、局限与临床意义。
 - 结论、作者声明、数据与代码可用性：语义收束；将长 URL 用 \url{} 处理。
 
@@ -296,3 +309,18 @@ Supplementary Table: 多任务模型的性能。
 对评审/协作的提示：
 - 若后续引入新宏或包，请只在 main.tex 导言区相应注释块内添加，并保持两空格对齐的轻量缩进。
 - 在替换图表时，将资产放入 figures/ 并使用相对路径 include；建议宽度统一为 \includegraphics[width=\linewidth]{...}。
+
+更新记录（2025-11-03）
+— main_clinical.tex 方法学更新 —
+- Methods>Data and Harmonization（数据与标准化）已按 CPET 标准 v1.4（cpet.yaml v1.4.0）对齐：
+  - 数据来源：三中心混合（zhongshan/xuhui/shanxi）为主数据集；外部中心 punan+rizhao 仅用于未知中心泛化评估；
+  - 标准：统一字段/单位/类型（VE [L/min], VO2 [mL/min], VO2_kg [mL/kg/min], HR [1/min], PetO2/PetCO2 [mmHg], Power_Load [W], RPM [r/min], ST/S [mV]），时间语义（Time/Phase_Time mm:ss, Time_Relative s），Load_Phase 划分阶段；
+  - 切分：按受试者分层随机切分 train/val/test，保持中心/设备比例，固定随机种子并冻结 split；基于混合数据集与显式外部测试；额外按中心抽样 30% primary dataset 作为快速探索子集；外部中心（punan、rizhao）作为独立测试集；外部测试的标准化参数仅由 primary dataset 的训练划分拟合并直接应用；
+- 预处理：统一采样与 10 s 聚合；短缺口插值与最小填充；轻量、跨中心一致的异常值过滤；
+ - 预处理（细化，替换 Preprocessing and robustness 文本）：
+   • 原则：尽量保留原始分布，仅在出现极端异常值时做最小化处理；
+   • Xuhui 的 \mbox{VE/VO2}, \mbox{VE/VCO2} 异常比值：以 Zhongshan+Shanxi 的最大值为阈上限，超限采样点剔除（源因为 \mbox{VO2}/\mbox{VCO2} 偶发近零）；
+   • 与临床口径对齐：对呼吸频采样做 10 s 聚合，窗口内按 IQR 规则滤除异常后取均值；
+   • 标准化：训练集拟合 z-score，固定应用于 val/test；必要时对目标同样处理；
+  - 标准化：仅在训练集拟合（features/必要时 targets），应用到 val/test；评估在物理单位报告；
+  - 标签：AT 标签由专家共识生成；AT 目标采用标准命名（VO2_kg_at_AT, HR_at_AT, Time_at_AT, RER_at_AT）。

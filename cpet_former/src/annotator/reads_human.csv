@@ -1,0 +1,3 @@
+case_id,time_at_at_s,reader_id,method,window_s
+0036c456-68aa-4522-ba83-358501235e97,707.0,J1,time_weighted_mean,10
+00b30c8a-cb17-4555-82c3-ca25f5ac6ecf,591.0,J1,time_weighted_mean,10

@@ -1,0 +1,3 @@
+case_id,time_at_at_s,reader_id,method,window_s,vo2_kg_at_at,hr_at_at,workload_at_at,coverage_ratio,warnings
+0036c456-68aa-4522-ba83-358501235e97,707.0,J1,time_weighted_mean,10,20.32129,136.755,86.15499999999999,1.0,
+00b30c8a-cb17-4555-82c3-ca25f5ac6ecf,591.0,J1,time_weighted_mean,10,13.2103575,105.65,57.394,1.0,
