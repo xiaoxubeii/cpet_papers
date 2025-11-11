@@ -20,6 +20,12 @@ try:
 except Exception:
     st = None
 
+# Optional: capture Plotly click events for on-chart interaction
+try:
+    from streamlit_plotly_events import plotly_events  # type: ignore
+except Exception:
+    plotly_events = None  # type: ignore
+
 # Local imports (works when running inside this folder with Streamlit)
 try:
     from data_io import load_cases, append_row_csv  # type: ignore
@@ -34,6 +40,15 @@ except ImportError:
         raise
 
 THRESHOLDS = [11.0, 14.0]
+BASE_TIME_ANCHOR = dt.datetime(2000, 1, 1)
+
+
+def seconds_to_anchor_datetime(val: float) -> dt.datetime:
+    return BASE_TIME_ANCHOR + dt.timedelta(seconds=float(max(0.0, val)))
+
+
+def anchor_datetime_to_seconds(value: dt.datetime) -> float:
+    return float((value - BASE_TIME_ANCHOR).total_seconds())
 
 
 def borderline_flags(vo2kg: float, margin: float = 0.3):
@@ -73,6 +88,26 @@ def compute_derived_panels(ts: pd.DataFrame) -> Tuple[pd.DataFrame, dict]:
     return out, info
 
 
+def infer_sampling_window(ts: pd.DataFrame) -> float:
+    """Estimate window length from sampling period; fallback to 10 s."""
+    if ts is None or ts.empty or 'Time' not in ts.columns:
+        return 10.0
+    try:
+        t = ts['Time'].apply(parse_time_s).to_numpy(dtype=float)
+    except Exception:
+        return 10.0
+    t = t[np.isfinite(t)]
+    if t.size < 2:
+        return 10.0
+    diffs = np.diff(np.sort(t))
+    diffs = diffs[np.isfinite(diffs) & (diffs > 0)]
+    if diffs.size == 0:
+        return 10.0
+    median = float(np.median(diffs))
+    # clamp to reasonable bounds
+    return float(np.clip(median, 1.0, 30.0))
+
+
 def main_cli():
     parser = argparse.ArgumentParser()
     parser.add_argument('--cases', required=True, help='Path to cases.csv')
@@ -91,7 +126,7 @@ def main_app(cases_csv: str, h5_path: str, outdir: str, reader_id_default: Optio
     st.set_page_config(page_title='AT Annotator', layout='wide')
 
     sidebar = st.sidebar
-    sidebar.header('控制面板')
+    sidebar.subheader('统计信息')
     reader_id = reader_id_default or ''
     assign_path = ''
 
@@ -139,6 +174,7 @@ def main_app(cases_csv: str, h5_path: str, outdir: str, reader_id_default: Optio
         st.stop()
 
     case = cases_df.iloc[idx]
+    cid = str(case['case_id'])
     st.title(f"CPET 用例 {case['case_id']} ({case.get('center','')}) [{idx+1}/{len(cases_df)}]")
 
     # Load timeseries
@@ -164,13 +200,101 @@ def main_app(cases_csv: str, h5_path: str, outdir: str, reader_id_default: Optio
         st.stop()
 
     # Controls rendered directly in sidebar
-    window_s = sidebar.select_slider('聚合窗口(s)', options=[5, 10, 15], value=10, help='[ / ] 可切换 5/10/15 s（UI不支持快捷键，先用滑块）')
-    method = sidebar.selectbox('方法', options=['时间加权', '中位数', '最近点'], index=0, help='M 切换（目前用下拉）')
-    conf = sidebar.slider('置信度(1–5)', 1, 5, 4)
-    quality = sidebar.selectbox('质量', options=['正常', '可疑', '不可用'], index=0)
-    needs_review = sidebar.checkbox('标记为需复核', value=False)
-    show_window = sidebar.checkbox('显示 10s 窗灰带', value=True)
+    auto_window = infer_sampling_window(ts)
+    window_labels = [
+        f'按采样频率 (≈{auto_window:.1f}s)',
+        '5 s',
+        '10 s',
+        '15 s',
+    ]
+    window_map = {
+        window_labels[0]: auto_window,
+        window_labels[1]: 5.0,
+        window_labels[2]: 10.0,
+        window_labels[3]: 15.0,
+    }
+    window_choice = sidebar.selectbox('聚合窗口', options=window_labels, index=0, help='默认按照采样频率自动设定，可切换 5/10/15 秒固定窗口')
+    window_s = window_map.get(window_choice, auto_window)
+    # Map localized labels to internal method ids so downstream logic stays consistent
+    method_label = sidebar.selectbox('方法', options=['时间加权', '中位数', '最近点'], index=0, help='切换取值方法')
+    method_map = {
+        '时间加权': 'time_weighted',
+        '中位数': 'median',
+        '最近点': 'point_value',
+    }
+    method = method_map.get(method_label, 'time_weighted')
+    # Show the AT window band over time-based panels
+    show_window = sidebar.checkbox('显示窗灰带', value=True)
+    # Optional: apply the same aggregation window to chart lines to refresh visual resolution
+    apply_to_charts = sidebar.checkbox('按聚合窗口平滑图表', value=True,
+                                       help='对时间序列使用所选窗口进行滚动平均（中心对齐）以刷新图表分辨率')
     use_vo2kg = sidebar.checkbox('VO2 使用按体重归一', value=('VO2_kg' in ts.columns))
+
+    markdown_separator = sidebar.markdown('---')
+
+    sidebar.subheader('数据标注')
+    # Allow re-annotation: adjust Time@AT via a slider when enabled.
+    # We persist per-case edits in session_state using a dict keyed by case_id.
+    if 'time_at_at_edits' not in st.session_state:
+        st.session_state['time_at_at_edits'] = {}
+    slider_coarse_key = f'at_slider_{cid}'
+    slider_fine_key = f'at_slider_fine_{cid}'
+    slider_pending_key = f'at_slider_pending_{cid}'
+    re_annotate = sidebar.checkbox('重新标注', value=False, help='启用后可直接拖拽图上红线（或用滑块微调）AT 时间')
+    if re_annotate:
+        # compute min/max from data for slider bounds
+        try:
+            t_all = ts['Time'].apply(parse_time_s).to_numpy(dtype=float)
+            tmin_s = float(np.nanmin(t_all)) if t_all.size else 0.0
+            tmax_s = float(np.nanmax(t_all)) if t_all.size else max(60.0, time_at_at_s)
+            if not np.isfinite(tmin_s):
+                tmin_s = 0.0
+            if not np.isfinite(tmax_s) or tmax_s <= tmin_s:
+                tmax_s = max(tmin_s + 60.0, time_at_at_s)
+        except Exception:
+            tmin_s, tmax_s = 0.0, max(60.0, float(time_at_at_s) if np.isfinite(time_at_at_s) else 300.0)
+
+        # initial value: previous edit for this case if exists; otherwise current AT
+        init_val = st.session_state['time_at_at_edits'].get(cid, float(time_at_at_s))
+        init_val = float(np.clip(init_val, tmin_s, tmax_s))
+        # choose a reasonable step based on sampling window (>=0.5s)
+        try:
+            step_s = max(0.5, float(infer_sampling_window(ts)))
+        except Exception:
+            step_s = 1.0
+
+        pending_dt = st.session_state.pop(slider_pending_key, None)
+
+        slider_min = seconds_to_anchor_datetime(tmin_s)
+        slider_max = seconds_to_anchor_datetime(tmax_s)
+        slider_default = seconds_to_anchor_datetime(init_val)
+        slider_format = 'HH:mm:ss'
+        if pending_dt is not None:
+            st.session_state[slider_coarse_key] = pending_dt
+            st.session_state[slider_fine_key] = pending_dt
+
+        # If plotly_events is available, prefer on-chart interaction and offer an optional fine-tune slider
+        if plotly_events is None:
+            slider_value = st.session_state.get(slider_coarse_key, slider_default)
+            at_new_dt = sidebar.slider('AT 时间 (mm:ss)', min_value=slider_min, max_value=slider_max,
+                                       value=slider_value, step=dt.timedelta(seconds=float(step_s)),
+                                       format=slider_format, key=slider_coarse_key)
+            at_new = anchor_datetime_to_seconds(at_new_dt)
+            st.session_state['time_at_at_edits'][cid] = float(at_new)
+            time_at_at_s = float(at_new)
+        else:
+            sidebar.caption('提示：在任一时间面板拖拽红线定位 AT；必要时可用下方滑块微调。')
+            fine_step = step_s/2.0 if step_s > 0.5 else step_s
+            slider_fine_key = f'at_slider_fine_{cid}'
+            slider_value = st.session_state.get(slider_fine_key, slider_default)
+            at_new_dt = sidebar.slider('微调 AT 时间 (mm:ss)', min_value=slider_min, max_value=slider_max,
+                                       value=slider_value, step=dt.timedelta(seconds=float(fine_step)),
+                                       format=slider_format, key=slider_fine_key)
+            at_new = anchor_datetime_to_seconds(at_new_dt)
+            st.session_state['time_at_at_edits'][cid] = float(at_new)
+            time_at_at_s = float(at_new)
+
+    markdown_separator = sidebar.markdown('---')
 
     col_nav1, col_nav2, col_nav3, col_nav4 = sidebar.columns(4)
     if col_nav1.button('上一个'):
@@ -202,12 +326,8 @@ def main_app(cases_csv: str, h5_path: str, outdir: str, reader_id_default: Optio
                 'vo2_kg_at_at': float(vo2_value) if np.isfinite(vo2_value) else np.nan,
                 'hr_at_at': float(hr_sop) if np.isfinite(hr_sop) else np.nan,
                 'workload_at_at': float(wl_sop) if np.isfinite(wl_sop) else np.nan,
-                'method': method,
-                'window_s': int(window_s),
-                'confidence': int(conf),
-                'quality': quality,
-                'needs_review': bool(needs_review),
-                'coverage_ratio': float(derived['coverage_ratio']) if derived['coverage_ratio'] is not None else np.nan,
+                'method': method_label,
+                'window_s': float(window_s),
                 'warnings': derived['warnings'],
                 'borderline_11': int(flags['borderline_11']),
                 'borderline_14': int(flags['borderline_14']),
@@ -256,16 +376,46 @@ def main_app(cases_csv: str, h5_path: str, outdir: str, reader_id_default: Optio
 
     flags = borderline_flags(vo2_value)
 
+    # Display Time@AT as mm:ss
+    def _format_mmss(sec: float) -> str:
+        if not np.isfinite(sec):
+            return 'NaN'
+        sec = max(0.0, float(sec))
+        m = int(sec // 60)
+        s = int(round(sec - m * 60))
+        if s == 60:
+            m += 1
+            s = 0
+        return f"{m:02d}:{s:02d}"
+
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric('VO2/kg@AT', f"{vo2_value:.2f}" if np.isfinite(vo2_value) else 'NaN')
-    col2.metric('HR@AT', f"{hr_sop:.1f}" if np.isfinite(hr_sop) else 'NaN')
-    col3.metric('Workload@AT', f"{wl_sop:.1f}" if np.isfinite(wl_sop) else 'NaN')
-    col4.metric('Coverage', f"{derived['coverage_ratio']:.2f}")
+    col1.metric('AT 时间', _format_mmss(time_at_at_s))
+    col2.metric('VO2/kg@AT', f"{vo2_value:.2f}" if np.isfinite(vo2_value) else 'NaN')
+    col3.metric('HR@AT', f"{hr_sop:.1f}" if np.isfinite(hr_sop) else 'NaN')
+    col4.metric('Workload@AT', f"{wl_sop:.1f}" if np.isfinite(wl_sop) else 'NaN')
 
     # Multi-panel plot
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
     dfp, info = compute_derived_panels(ts)
+    # Optionally smooth/aggregate displayed curves using the selected window
+    dfp_plot = dfp
+    if apply_to_charts:
+        try:
+            # approximate sample period to convert seconds to sample count
+            dt_est = float(infer_sampling_window(ts)) if np.isfinite(infer_sampling_window(ts)) else 1.0
+        except Exception:
+            dt_est = 1.0
+        nwin = max(1, int(round(float(window_s) / max(1e-6, dt_est))))
+        # require at least 3 points for a visible smoothing effect when possible
+        nmin = max(1, nwin // 2)
+        cols_to_smooth = ['VO2','VO2_kg','VCO2','VE','HR','Power_Load','PetO2','PetCO2','RER','VE_per_VO2','VE_per_VCO2']
+        if nwin > 1:
+            dfp_plot = dfp.copy()
+            for c in cols_to_smooth:
+                if c in dfp_plot.columns:
+                    ser = pd.to_numeric(dfp_plot[c], errors='coerce')
+                    dfp_plot[c] = ser.rolling(window=nwin, center=True, min_periods=nmin).mean()
     # New CPET nine-panel (Wasserman-style)
     titles = (
         'Workload (time)', 'VO2 (time)', 'VCO2 (time)',
@@ -286,38 +436,48 @@ def main_app(cases_csv: str, h5_path: str, outdir: str, reader_id_default: Optio
         fig.add_trace(go.Scatter(x=xs, y=ys, mode='lines', name=name), row=row, col=col)
 
     if 'Power_Load' in ts.columns:
-        _add_line(1, 1, dfp['Time_s'], dfp['Power_Load'], 'Workload')
+        _add_line(1, 1, dfp_plot['Time_s'], dfp_plot['Power_Load'], 'Workload')
     if use_vo2kg and 'VO2_kg' in ts.columns:
-        _add_line(1, 2, dfp['Time_s'], dfp['VO2_kg'], 'VO2/kg')
+        _add_line(1, 2, dfp_plot['Time_s'], dfp_plot['VO2_kg'], 'VO2/kg')
     elif 'VO2' in ts.columns:
-        _add_line(1, 2, dfp['Time_s'], dfp['VO2'], 'VO2')
+        _add_line(1, 2, dfp_plot['Time_s'], dfp_plot['VO2'], 'VO2')
     if 'VCO2' in ts.columns:
-        _add_line(1, 3, dfp['Time_s'], dfp['VCO2'], 'VCO2')
+        _add_line(1, 3, dfp_plot['Time_s'], dfp_plot['VCO2'], 'VCO2')
 
     # Row 2: VE, VE equivalents, RER
     if 'VE' in ts.columns:
-        _add_line(2, 1, dfp['Time_s'], dfp['VE'], 'VE')
-    _add_line(2, 2, dfp['Time_s'], dfp['VE_per_VO2'], 'VE/VO2')
-    _add_line(2, 2, dfp['Time_s'], dfp['VE_per_VCO2'], 'VE/VCO2')
-    _add_line(2, 3, dfp['Time_s'], dfp['RER'], 'RER')
+        _add_line(2, 1, dfp_plot['Time_s'], dfp_plot['VE'], 'VE')
+    _add_line(2, 2, dfp_plot['Time_s'], dfp_plot['VE_per_VO2'], 'VE/VO2')
+    _add_line(2, 2, dfp_plot['Time_s'], dfp_plot['VE_per_VCO2'], 'VE/VCO2')
+    _add_line(2, 3, dfp_plot['Time_s'], dfp_plot['RER'], 'RER')
 
     # Row 3: PetO2, PetCO2, V-slope
     if 'PetO2' in ts.columns:
-        _add_line(3, 1, dfp['Time_s'], dfp['PetO2'], 'PetO2')
+        _add_line(3, 1, dfp_plot['Time_s'], dfp_plot['PetO2'], 'PetO2')
     if 'PetCO2' in ts.columns:
-        _add_line(3, 2, dfp['Time_s'], dfp['PetCO2'], 'PetCO2')
+        _add_line(3, 2, dfp_plot['Time_s'], dfp_plot['PetCO2'], 'PetCO2')
     if 'VO2' in ts.columns and 'VCO2' in ts.columns:
-        mask_win = (dfp['Time_s'] >= time_at_at_s - window_s/2.0) & (dfp['Time_s'] <= time_at_at_s + window_s/2.0)
-        fig.add_trace(go.Scatter(x=dfp['VO2'], y=dfp['VCO2'], mode='markers', marker=dict(size=4, color='gray'), name='All'), row=3, col=3)
-        fig.add_trace(go.Scatter(x=dfp.loc[mask_win,'VO2'], y=dfp.loc[mask_win,'VCO2'], mode='markers', marker=dict(size=5, color='red'), name='Window'), row=3, col=3)
+        mask_win = (dfp_plot['Time_s'] >= time_at_at_s - window_s/2.0) & (dfp_plot['Time_s'] <= time_at_at_s + window_s/2.0)
+        fig.add_trace(
+            go.Scatter(x=dfp_plot['VO2'], y=dfp_plot['VCO2'], mode='markers', marker=dict(size=4, color='gray'), name='All'),
+            row=3, col=3)
+        fig.add_trace(
+            go.Scatter(x=dfp_plot.loc[mask_win,'VO2'], y=dfp_plot.loc[mask_win,'VCO2'], mode='markers', marker=dict(size=5, color='red'), name='Window'),
+            row=3, col=3)
 
     # Add AT line and window band to time-based panels (exclude V-slope row3,col3)
     time_panels = [(1,1),(1,2),(1,3),(2,1),(2,2),(2,3),(3,1),(3,2)]
+    line_shape_indices = []
     for (r,c) in time_panels:
         if show_window:
             fig.add_vrect(x0=time_at_at_s - window_s/2.0, x1=time_at_at_s + window_s/2.0,
                           fillcolor='LightSkyBlue', opacity=0.2, line_width=0, row=r, col=c)
         fig.add_vline(x=time_at_at_s, line_color='red', line_dash='dash', row=r, col=c)
+        shapes = fig.layout.shapes
+        if shapes:
+            line_shape_indices.append(len(shapes) - 1)
+
+    line_shape_idx_set = set(line_shape_indices)
 
     fig.update_layout(height=900, margin=dict(l=10, r=10, t=30, b=10))
 
@@ -351,7 +511,73 @@ def main_app(cases_csv: str, h5_path: str, outdir: str, reader_id_default: Optio
     ticktext = [_fmt_mmss(v) for v in ticks]
     for (r,c) in time_panels:
         fig.update_xaxes(row=r, col=c, tickmode='array', tickvals=ticks, ticktext=ticktext, title_text='Time (mm:ss)')
-    st.plotly_chart(fig, use_container_width=True)
+    # Enable draggable AT red line via relayout events when possible
+    used_events = False
+    if re_annotate and plotly_events is not None and line_shape_idx_set:
+        def _time_from_relayout(ev_dict):
+            for key, val in ev_dict.items():
+                if not isinstance(key, str) or not key.startswith('shapes['):
+                    continue
+                try:
+                    idx_part = key.split('[', 1)[1]
+                    idx = int(idx_part.split(']', 1)[0])
+                except Exception:
+                    continue
+                if idx not in line_shape_idx_set:
+                    continue
+                if key.endswith('.x0') or key.endswith('.x1'):
+                    try:
+                        return float(val)
+                    except (TypeError, ValueError):
+                        continue
+            return None
+
+        cfg_drag = {'displaylogo': False, 'edits': {'shapePosition': True}}
+        kwargs = dict(
+            click_event=False,
+            select_event=False,
+            hover_event=False,
+            relayout_event=True,
+            key=f"plt_{case['case_id']}",
+            override_height=900,
+        )
+        events = None
+        used_events = True
+        try:
+            events = plotly_events(fig, config=cfg_drag, **kwargs)
+        except TypeError:
+            try:
+                events = plotly_events(fig, **kwargs)
+            except Exception:
+                used_events = False
+        except Exception:
+            used_events = False
+
+        if used_events and events:
+            event_list = events if isinstance(events, list) else [events]
+            new_time = None
+            for ev in event_list:
+                if isinstance(ev, dict):
+                    new_time = _time_from_relayout(ev)
+                    if new_time is not None:
+                        break
+            if new_time is not None and np.isfinite(new_time):
+                tmin = float(np.nanmin(dfp['Time_s'])) if len(dfp['Time_s']) else 0.0
+                tmax = float(np.nanmax(dfp['Time_s'])) if len(dfp['Time_s']) else 0.0
+                if tmin <= new_time <= tmax:
+                    cid = str(case['case_id'])
+                    st.session_state['time_at_at_edits'][cid] = float(new_time)
+                    slider_dt = seconds_to_anchor_datetime(new_time)
+                    st.session_state[slider_pending_key] = slider_dt
+                    try:
+                        if hasattr(st, 'rerun'):
+                            st.rerun()
+                        elif hasattr(st, 'experimental_rerun'):
+                            st.experimental_rerun()
+                    except Exception:
+                        pass
+    if not used_events:
+        st.plotly_chart(fig, use_container_width=True)
 
     
 
