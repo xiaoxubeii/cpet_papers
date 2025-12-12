@@ -34,3 +34,19 @@ ganshorn 数据转换标准：/root/autodl-tmp/vox_cpet/cpetformat/ganshorn.yaml
 - *_ssl：预训练数据集
 - *_explicit_split：train/val 包含三个中心，test 使用了一个外部 punan 数据集
 - *_loco：三个数据集交替做 LOCO
+
+## 专家标注 SOP
+
+- 口径冻结：统一 t0、10s 判读分辨率；报告主指标用 30s 分箱（c30=round((tAT-t0)/30)）、辅指标用 10s 分箱；允许“不可判定”并列出理由清单。
+- 双盲标注：两名专家独立判读（AT/RCP/限制类型/质量等级/置信度），不可互见；完成先导 20 例（≥10 Ganshorn）达标后再全量。
+- 上锁与一致性：先导集出齐即“上锁”，计算加权 κ 与一致率
+  - 30s 分箱加权 κ（二次权重）≥0.80 为门槛；10s 分箱 κ ≥0.75 为辅；±10/20/30 s 一致率与 MAE 同时报；按设备分层。
+  - 未达标先回看分歧样例、补充判读规则与面板，再抽样复测。
+- 共识与仲裁：生成分歧清单 → 第三名资深仲裁；记录裁决与依据；仍不确定标“不可判定（原因）”。
+- 版本与存档：保留 r1.json、r2.json、consensus.json 三套；标注版本 v1.0；落盘到 artifacts/external_center_xxx/，并在 requirement.txt 登记规则与阈值。
+- 使用原则：外部评测只用共识强标签；个人版仅用于 IRR 与质控；训练集按既定“强/弱标签入组”策略执行。外加 vo2_AT 和 vo2_peak 判读
+- vo2_AT/vo2_peak 判读：
+   - vo2_AT：以共识 t_AT 对应的 30s 分箱 c30 的 VO2 为主值（mL/min），同步给出体重归一化值（mL/kg/min）；10s 版本仅用于 IRR 统计；若 AT 不可判则标“不可判定（原因）”。
+   - vo2_peak：以全程 30s 滚动平均 VO2 的最大值为主值；同时记录发生时刻的 c30；异常孤立尖峰按既定数据清洗流程处理；数据缺失/漂移严重则标“不可判定（原因）”。
+   - 取整与报告：主值四舍五入至最近 10 mL/min；mL/kg/min 保留 1 位小数；JSON 字段建议包含：vo2_AT、vo2_AT_kg、vo2_peak、vo2_peak_kg、t_AT、c30_AT、c30_peak、quality、rationale。
+   - 一致性与统计：以 30s 分箱评估一致率与 MAE（具体阈值登记在 requirement.txt）；10s 分箱统计作为辅参考；按设备分层报告。

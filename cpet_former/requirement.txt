@@ -1,4 +1,12 @@
-论文大纲：基于Transformer的自动化心肺运动试验（CPET）分析框架
+论文大纲：基于多中心 Conformer 序列模型的 CPET AT 在线 / 离线自动预测框架
+
+[2025-11-20 更新] 当前 `cpet_former/main_clinical.tex` 已按“统一在线 + 离线 AT 预测”方案重写：
+- 模型主体改为带 Center-Embedding + Conditional Norm 的 Conformer 序列网络，采用“双头设计”（时间序列概率头 + 全局 AT 时间回归头），并加入概率单调性正则；
+- 方法学部分以多中心三折交叉验证 + 独立外部中心验证为主，明确区分离线（全程）预测和在线（流式）触发仿真，定义 AT 时间 MAE、30s 加权 $\kappa$、$\pm$10/20/30s 命中率、VO$_2$@AT / VO$_2$peak 误差以及在线触发延迟 / 检出率等终点；
+- 模型对比按“临床规则基线 + 报告值 + ML-Feat-GBDT + DL-Transformer + Conformer 消融（CenterEmbed+CondNorm / MonotonicReg / GlobalOnly）+ Multi-center vs Single-center + Strong-only vs Strong+Weak 标签”组织；
+- 读者研究（AI vs Clinician）暂不写入主文，而保留在本 requirement 作为后续扩展方向。
+
+下方为早期以 Transformer + GroupDRO + 读者研究为核心的大纲草稿，仅供参考和回收素材：
 
 目标期刊（示例）： The Lancet Digital Health, Nature Medicine, JAMA Internal Medicine, European Heart Journal
 

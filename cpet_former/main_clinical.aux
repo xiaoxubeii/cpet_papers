@@ -16,63 +16,143 @@
 \gdef\HyperFirstAtBeginDocument#1{#1}
 \providecommand\HyField@AuxAddToFields[1]{}
 \providecommand\HyField@AuxAddToCoFields[2]{}
-\citation{guazzi2016}
-\citation{wasserman2012}
-\citation{beaver1986}
-\citation{sue1988}
-\citation{yeh1983}
-\citation{santos2014}
-\citation{petek2021}
-\citation{groupdro2020}
 \@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {2}Methods}{2}{section.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Design and Reference Standard}{2}{subsection.2.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Data and Harmonization}{2}{subsection.2.2}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Concise overview of the CPET data standard used in this study. Groups list representative variables and typical units; the full specification appears in the Supplement.}}{3}{table.1}\protected@file@percent }
-\newlabel{tab:cpet_standard_overview}{{1}{3}{Concise overview of the CPET data standard used in this study. Groups list representative variables and typical units; the full specification appears in the Supplement}{table.1}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Dataset composition, splits, and external-center evaluations.}}{3}{table.2}\protected@file@percent }
-\newlabel{tab:dataset_details}{{2}{3}{Dataset composition, splits, and external-center evaluations}{table.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Modeling and Evaluation}{3}{subsection.2.3}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Overview of data sources, harmonization, and analysis splits.}}{4}{figure.1}\protected@file@percent }
-\newlabel{fig:data_org}{{1}{4}{Overview of data sources, harmonization, and analysis splits}{figure.1}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Reader Study}{4}{subsection.2.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {3}Results}{4}{section.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Study Cohort}{4}{subsection.3.1}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Study flow and analysis splits.}}{4}{figure.2}\protected@file@percent }
-\newlabel{fig:flow}{{2}{4}{Study flow and analysis splits}{figure.2}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Baseline characteristics by center.}}{5}{table.3}\protected@file@percent }
-\newlabel{tab:baseline}{{3}{5}{Baseline characteristics by center}{table.3}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Distribution snapshots (by center) for VO\textsubscript  {2}, RER, VE, and HR in physical units; dashed lines indicate centre medians.}}{5}{figure.3}\protected@file@percent }
-\newlabel{fig:data_dist}{{3}{5}{Distribution snapshots (by center) for VO\textsubscript {2}, RER, VE, and HR in physical units; dashed lines indicate centre medians}{figure.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Clinical Threshold Agreement and Decision Utility}{6}{subsection.3.2}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Decision curve analysis for AI-assisted AT-based decision-making.}}{6}{figure.4}\protected@file@percent }
-\newlabel{fig:dca}{{4}{6}{Decision curve analysis for AI-assisted AT-based decision-making}{figure.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Model Performance and Generalization}{6}{subsection.3.3}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Model performance on the pooled hold-out and external centers (mean [95\% CI]).}}{6}{table.4}\protected@file@percent }
-\newlabel{tab:perf}{{4}{6}{Model performance on the pooled hold-out and external centers (mean [95\% CI])}{table.4}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Performance on external centers by site.}}{6}{figure.5}\protected@file@percent }
-\newlabel{fig:external_centers}{{5}{6}{Performance on external centers by site}{figure.5}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Reader Study: AI vs. Clinicians}{6}{subsection.3.4}\protected@file@percent }
-\citation{vaswani2017}
-\citation{groupdro2020}
-\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Reader study accuracy comparison.}}{7}{figure.6}\protected@file@percent }
-\newlabel{fig:reader}{{6}{7}{Reader study accuracy comparison}{figure.6}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Agreement analyses against expert consensus.}}{7}{figure.7}\protected@file@percent }
-\newlabel{fig:ba}{{7}{7}{Agreement analyses against expert consensus}{figure.7}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {4}Discussion}{7}{section.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {5}Conclusion}{7}{section.5}\protected@file@percent }
-\bibcite{guazzi2016}{1}
-\bibcite{wasserman2012}{2}
-\bibcite{beaver1986}{3}
-\bibcite{sue1988}{4}
-\bibcite{yeh1983}{5}
-\bibcite{rajkomar2019}{6}
-\bibcite{santos2014}{7}
-\bibcite{petek2021}{8}
-\bibcite{vaswani2017}{9}
-\bibcite{devlin2018}{10}
-\bibcite{dosovitskiy2020}{11}
-\bibcite{groupdro2020}{12}
-\bibcite{koo2016}{13}
-\bibcite{ats2003}{14}
-\gdef \@abspage@last{11}
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.1}Background and Motivation}{1}{subsection.1.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.2}The Data Challenge: Physiological Complexity and Signal Uncertainty}{1}{subsection.1.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.3}The Clinical Dilemma: Safety vs. Precision}{2}{subsection.1.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.4}The Deployment Bottleneck: Systemic Heterogeneity \& Data Fragmentation}{2}{subsection.1.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.5}Our Contributions: Unifying the Divide via Three-Fold Decoupling}{2}{subsection.1.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2}Methodology}{3}{section.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Data Infrastructure and Strategy}{3}{subsection.2.1}\protected@file@percent }
+\newlabel{sec:data_infra}{{2.1}{3}{Data Infrastructure and Strategy}{subsection.2.1}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.1.1}The CPETx Standardization Framework}{3}{subsubsection.2.1.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.1.2}Preprocessing: Physics-Aware Meso-scale Aggregation}{3}{subsubsection.2.1.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.1.3}Temporal Alignment: Phase-Locked Tensor Construction}{3}{subsubsection.2.1.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.1.4}Normalization: Split-Aware Standardization}{3}{subsubsection.2.1.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Model Architecture: The PACE-Former Framework}{3}{subsection.2.2}\protected@file@percent }
+\newlabel{sec:model_arch}{{2.2}{3}{Model Architecture: The PACE-Former Framework}{subsection.2.2}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.2.1}Style-Aware Backbone (Input-Driven Calibration)}{3}{subsubsection.2.2.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces \textbf  {The CPETx Data Standardization Pipeline.} Raw heterogeneous data from multi-center devices (Ganshorn, Cosmed) are ingested through vendor-specific parsers, mapped to a unified schema (CPETx), and transformed into aligned tensors via 10-second aggregation and phase-locked truncation.\relax }}{4}{figure.caption.1}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{fig:data_pipeline}{{1}{4}{\textbf {The CPETx Data Standardization Pipeline.} Raw heterogeneous data from multi-center devices (Ganshorn, Cosmed) are ingested through vendor-specific parsers, mapped to a unified schema (CPETx), and transformed into aligned tensors via 10-second aggregation and phase-locked truncation.\relax }{figure.caption.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{A. Attention-Based Style Extraction}{4}{paragraph*.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{B. Conditional Normalization \& Conformer Blocks}{4}{paragraph*.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.2.2}Dual-Task Heads}{4}{subsubsection.2.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Diagnostic Head (Time-to-Event)}{4}{paragraph*.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Prognostic Head (Value Regression)}{4}{paragraph*.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Hybrid Training Strategy}{4}{subsection.2.3}\protected@file@percent }
+\newlabel{sec:training}{{2.3}{4}{Hybrid Training Strategy}{subsection.2.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces \textbf  {The PACE-Former Architecture.} The framework features (A) a \textbf  {Style Encoder} (1D-CNN) for extracting systemic fingerprints from static preload data; (B) a \textbf  {Conformer Backbone} for capturing spatiotemporal dynamics; and (C) \textbf  {Dual-Task Heads} for simultaneous diagnostic (AT probability) and prognostic (VO\textsubscript  {2peak}{} regression) inference.\relax }}{5}{figure.caption.2}\protected@file@percent }
+\newlabel{fig:arch}{{2}{5}{\textbf {The PACE-Former Architecture.} The framework features (A) a \textbf {Style Encoder} (1D-CNN) for extracting systemic fingerprints from static preload data; (B) a \textbf {Conformer Backbone} for capturing spatiotemporal dynamics; and (C) \textbf {Dual-Task Heads} for simultaneous diagnostic (AT probability) and prognostic (\vopeak {} regression) inference.\relax }{figure.caption.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}The Physiological Loss Landscape}{5}{subsection.2.4}\protected@file@percent }
+\newlabel{sec:loss}{{2.4}{5}{The Physiological Loss Landscape}{subsection.2.4}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Experimental Design}{5}{section.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Study Cohort and Data Curation}{5}{subsection.3.1}\protected@file@percent }
+\newlabel{sec:cohort}{{3.1}{5}{Study Cohort and Data Curation}{subsection.3.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{Exclusion Criteria}{5}{paragraph*.8}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces \textbf  {Clinical Stratification and Distribution Shift.} \textbf  {(Left)} Weber Class distribution showing clear domain separation: Shanxi is dominated by heart failure patients (Class C/D). \textbf  {(Right)} Box plots of Ground Truth AT Time reveal systemic temporal shifts across centers.\relax }}{6}{figure.caption.7}\protected@file@percent }
+\newlabel{fig:stratification}{{3}{6}{\textbf {Clinical Stratification and Distribution Shift.} \textbf {(Left)} Weber Class distribution showing clear domain separation: Shanxi is dominated by heart failure patients (Class C/D). \textbf {(Right)} Box plots of Ground Truth AT Time reveal systemic temporal shifts across centers.\relax }{figure.caption.7}{}}
+\@writefile{toc}{\contentsline {paragraph}{Final Cohort}{6}{paragraph*.9}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Reference Standard and Physiological Validity}{6}{subsection.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Reference Standard: Real-World Clinical Ground Truth}{6}{paragraph*.11}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Silver Standard Nature}{6}{paragraph*.12}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Physiological Validity Check}{6}{paragraph*.13}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Evaluation Protocol}{6}{subsection.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.3.1}Data Partitioning Strategies}{6}{subsubsection.3.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.3.2}Multi-Dimensional Metric Framework}{6}{subsubsection.3.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Baselines and Ablation Protocols}{6}{subsection.3.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.4.1}Comparative Baselines}{6}{subsubsection.3.4.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Demographics and Baseline Characteristics by Center\relax }}{7}{table.caption.10}\protected@file@percent }
+\newlabel{tab:demographics}{{1}{7}{Demographics and Baseline Characteristics by Center\relax }{table.caption.10}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces \textbf  {Physiological Consistency Check.} \textbf  {(Left)} Strong linearity between $VO_2$ and Power ($r>0.90$). \textbf  {(Right)} Divergent HR-$VO_2$ coupling in Shanxi ($r=0.49$) versus other centers ($r\approx 0.70$) validates the heart failure cohort characteristics.\relax }}{7}{figure.caption.14}\protected@file@percent }
+\newlabel{fig:correlation}{{4}{7}{\textbf {Physiological Consistency Check.} \textbf {(Left)} Strong linearity between $VO_2$ and Power ($r>0.90$). \textbf {(Right)} Divergent HR-$VO_2$ coupling in Shanxi ($r=0.49$) versus other centers ($r\approx 0.70$) validates the heart failure cohort characteristics.\relax }{figure.caption.14}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.4.2}Ablation Studies}{7}{subsubsection.3.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.5}Implementation Details}{7}{subsection.3.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Results}{7}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Offline Precision: Clinical Equivalence}{7}{subsection.4.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Definition of Evaluation Metrics\relax }}{8}{table.caption.15}\protected@file@percent }
+\newlabel{tab:metrics_def}{{2}{8}{Definition of Evaluation Metrics\relax }{table.caption.15}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Online Safety: The Zero-False-Alarm Standard}{8}{subsection.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Prognostic Value: Virtual Maximal Testing}{8}{subsection.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Ablation Study: The Role of Style Adaptation}{8}{subsection.4.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Discussion and Conclusion}{8}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Summary of Findings}{8}{subsection.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Interpretation and Clinical Significance}{8}{subsection.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.1}Solving Systemic Heterogeneity via Style Adaptation}{8}{subsubsection.5.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.2}The Architectural Advantage: Why Conformer?}{8}{subsubsection.5.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.3}Bridging the ``Hesitancy Gap''}{9}{subsubsection.5.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Limitations}{9}{subsection.5.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Future Directions}{9}{subsection.5.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Conclusion}{9}{subsection.5.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Ethics Statement}{9}{paragraph*.16}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Data Availability}{9}{paragraph*.17}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Code Availability}{9}{paragraph*.18}\protected@file@percent }
+\bibcite{wasserman2011}{1}
+\bibcite{ats2003}{2}
+\bibcite{guazzi2012}{3}
+\bibcite{esteva2017}{4}
+\bibcite{gulati2020}{5}
+\bibcite{vaswani2017}{6}
+\bibcite{loshchilov2019}{7}
+\bibcite{ke2017}{8}
+\bibcite{sagawa2019}{9}
+\bibcite{chapelle2010}{10}
+\bibcite{beaver1981}{11}
+\bibcite{weber1985}{12}
+\bibcite{akiba2019}{13}
+\@writefile{toc}{\contentsline {paragraph}{Author Contributions}{10}{paragraph*.19}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Competing Interests}{10}{paragraph*.20}\protected@file@percent }
+\gdef \LT@i {\LT@entry 
+    {5}{86.22318pt}\LT@entry 
+    {1}{91.22177pt}\LT@entry 
+    {5}{63.52795pt}\LT@entry 
+    {1}{211.16928pt}}
+\@writefile{lot}{\contentsline {table}{\numberline {S1}{\ignorespaces Complete CPETx Time-Series Schema\relax }}{11}{table.1}\protected@file@percent }
+\newlabel{tab:s_ts_schema}{{S1}{11}{Complete CPETx Time-Series Schema\relax }{table.1}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {S2}{\ignorespaces Metadata Schema\relax }}{12}{table.caption.21}\protected@file@percent }
+\newlabel{tab:s_meta_schema}{{S2}{12}{Metadata Schema\relax }{table.caption.21}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {S3}{\ignorespaces Summary Schema (Key Targets)\relax }}{13}{table.caption.22}\protected@file@percent }
+\newlabel{tab:s_summary_schema}{{S3}{13}{Summary Schema (Key Targets)\relax }{table.caption.22}{}}
+\@writefile{toc}{\contentsline {paragraph}{1. Ganshorn Adapter (Semi-Structured Parsing)}{13}{paragraph*.23}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{2. COSMED Adapter (Multi-Sheet Integration)}{13}{paragraph*.24}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {S1}{\ignorespaces \textbf  {Vendor-Specific Extraction Logic.} Flowchart comparing the Pivot-Based Parsing for Ganshorn (semi-structured) vs. Multi-Sheet Integration for COSMED.\relax }}{14}{figure.caption.25}\protected@file@percent }
+\newlabel{fig:supp_vendor}{{S1}{14}{\textbf {Vendor-Specific Extraction Logic.} Flowchart comparing the Pivot-Based Parsing for Ganshorn (semi-structured) vs. Multi-Sheet Integration for COSMED.\relax }{figure.caption.25}{}}
+\@writefile{toc}{\contentsline {paragraph}{3. Deduplication \& Serialization}{14}{paragraph*.26}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{1. Temporal Weighting and Validity Masking}{14}{paragraph*.27}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{2. Robust Volumetric Aggregation (Flow Variables)}{14}{paragraph*.28}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{3. Mass-Conserving Ratio Re-computation}{15}{paragraph*.29}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{4. State Variable Handling}{15}{paragraph*.30}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{5. Categorical Mode Voting}{15}{paragraph*.31}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {S2}{\ignorespaces \textbf  {Physics-Aware Aggregation.} Illustration of the temporal overlap weighting mechanism used to transform breath-by-breath data into 10-second bins without aliasing.\relax }}{15}{figure.caption.32}\protected@file@percent }
+\newlabel{fig:supp_agg}{{S2}{15}{\textbf {Physics-Aware Aggregation.} Illustration of the temporal overlap weighting mechanism used to transform breath-by-breath data into 10-second bins without aliasing.\relax }{figure.caption.32}{}}
+\@writefile{toc}{\contentsline {paragraph}{T0 Synchronization (Zero-Centering)}{16}{paragraph*.33}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Fixed-Window Truncation}{16}{paragraph*.34}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {S3}{\ignorespaces \textbf  {Phase-Locked Temporal Alignment.} Schematic showing the T0 synchronization at Main Load onset and the truncation windows for Preload and Recovery contexts.\relax }}{16}{figure.caption.35}\protected@file@percent }
+\newlabel{fig:supp_align}{{S3}{16}{\textbf {Phase-Locked Temporal Alignment.} Schematic showing the T0 synchronization at Main Load onset and the truncation windows for Preload and Recovery contexts.\relax }{figure.caption.35}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {S4}{\ignorespaces Weber Classification Reference\relax }}{17}{table.caption.36}\protected@file@percent }
+\newlabel{tab:s_weber}{{S4}{17}{Weber Classification Reference\relax }{table.caption.36}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {S5}{\ignorespaces LightGBM Hand-Crafted Feature Set\relax }}{17}{table.caption.37}\protected@file@percent }
+\newlabel{tab:s_lgbm_features}{{S5}{17}{LightGBM Hand-Crafted Feature Set\relax }{table.caption.37}{}}
+\@writefile{toc}{\contentsline {paragraph}{Baseline 2: Vanilla Transformer}{18}{paragraph*.38}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Baseline 3: Standard Conformer (Single-Head)}{18}{paragraph*.39}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\textbf  {PACE-Former}{} (Proposed Model)}{18}{paragraph*.40}\protected@file@percent }
+\gdef \LT@ii {\LT@entry 
+    {5}{94.09682pt}\LT@entry 
+    {5}{113.77243pt}\LT@entry 
+    {5}{48.66678pt}\LT@entry 
+    {1}{182.71652pt}}
+\@writefile{toc}{\contentsline {paragraph}{Stage 1: The ``Sprint'' Search (Exploration)}{19}{paragraph*.41}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Stage 2: Robust Verification (Exploitation)}{19}{paragraph*.42}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {S6}{\ignorespaces Hyperparameter Search Space\relax }}{19}{table.caption.43}\protected@file@percent }
+\newlabel{tab:s_hyper_space}{{S6}{19}{Hyperparameter Search Space\relax }{table.caption.43}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {S7}{\ignorespaces Fixed Architecture \& Training Parameters\relax }}{19}{table.7}\protected@file@percent }
+\newlabel{tab:s_fixed_params}{{S7}{19}{Fixed Architecture \& Training Parameters\relax }{table.7}{}}
+\@writefile{toc}{\contentsline {paragraph}{Observation:}{20}{paragraph*.44}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Contrast:}{20}{paragraph*.45}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {S8}{\ignorespaces Center-wise Performance Metrics (Offline Mode)\relax }}{20}{table.caption.46}\protected@file@percent }
+\newlabel{tab:s_center_perf}{{S8}{20}{Center-wise Performance Metrics (Offline Mode)\relax }{table.caption.46}{}}
+\@writefile{toc}{\contentsline {paragraph}{Result:}{21}{paragraph*.47}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Safety Verification:}{21}{paragraph*.48}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Comparison:}{21}{paragraph*.49}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Demonstration:}{21}{paragraph*.50}\protected@file@percent }
+\gdef \@abspage@last{21}

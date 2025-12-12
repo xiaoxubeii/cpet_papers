@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.22 (TeX Live 2022/dev/Debian) (preloaded format=pdflatex 2025.10.31)  3 NOV 2025 14:53
+This is pdfTeX, Version 3.141592653-2.6-1.40.22 (TeX Live 2022/dev/Debian) (preloaded format=pdflatex 2025.10.31)  20 NOV 2025 17:55
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -764,96 +764,81 @@ LaTeX Font Info:    External font `lmex10' loaded for size
 (Font)              <10> on input line 59.
 LaTeX Font Info:    External font `lmex10' loaded for size
 (Font)              <7> on input line 59.
-
-
-LaTeX Warning: Citation `guazzi2016' on page 1 undefined on input line 68.
-
 LaTeX Font Info:    External font `lmex10' loaded for size
 (Font)              <10.95> on input line 68.
+ [1
 
-LaTeX Warning: Citation `wasserman2012' on page 1 undefined on input line 68.
-
-
-LaTeX Warning: Citation `beaver1986' on page 1 undefined on input line 68.
-
-
-LaTeX Warning: Citation `sue1988' on page 1 undefined on input line 68.
+{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}] [2] [3]
+Underfull \hbox (badness 10000) in paragraph at lines 135--135
+[]|\OT1/lmr/m/n/10.95 Three-fold cross-validation
+ []
 
 
-LaTeX Warning: Citation `yeh1983' on page 1 undefined on input line 68.
+Overfull \hbox (1.93573pt too wide) in paragraph at lines 142--143
+[]\OT1/lmr/m/n/10.95 To ac-count for sys-tem-atic dif-fer-ences be-tween cen-te
+rs and de-vices we in-tro-duced learn-able cen-ter/device
+ []
 
+[4]
+Overfull \hbox (5.99391pt too wide) in paragraph at lines 169--170
+[]\OT1/lmr/bx/n/10.95 Baseline 0 (clin-i-cal rules)\OT1/lmr/m/n/10.95 : AT es-t
+i-mated by stan-dard-ized im-ple-men-ta-tions of V-slope, VE/VO$[]$
+ []
 
-LaTeX Warning: Citation `santos2014' on page 1 undefined on input line 70.
+[5] [6]
+Overfull \hbox (33.36597pt too wide) in paragraph at lines 255--266
+ [][] 
+ []
 
+[7]
+Overfull \hbox (67.62062pt too wide) in paragraph at lines 302--315
+ [][] 
+ []
 
-LaTeX Warning: Citation `petek2021' on page 1 undefined on input line 70.
-
-
-LaTeX Warning: Citation `groupdro2020' on page 1 undefined on input line 72.
-
-[1
-
-{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}]
+[8] [9]
 LaTeX Font Info:    Trying to load font information for OT1+lmtt on input line 
-82.
-
-(/usr/share/texmf/tex/latex/lm/ot1lmtt.fd
+348.
+ (/usr/share/texmf/tex/latex/lm/ot1lmtt.fd
 File: ot1lmtt.fd 2009/10/30 v1.6 Font defs for Latin Modern
 )
-
-LaTeX Warning: Reference `tab:cpet_standard_overview' on page 2 undefined on in
-put line 82.
-
-
-Overfull \hbox (15.97049pt too wide) in paragraph at lines 82--83
-\OT1/lmr/m/n/10.95 [mV]). Time is rep-re-sented con-sis-tently via \OT1/lmtt/m/
-n/10.95 Time\OT1/lmr/m/n/10.95 /\OT1/lmtt/m/n/10.95 Phase[]Time \OT1/lmr/m/n/10
-.95 (mm:ss) and \OT1/lmtt/m/n/10.95 Time[]Relative \OT1/lmr/m/n/10.95 (s); \OT1
-/lmtt/m/n/10.95 Load[]Phase
+Overfull \hbox (48.2063pt too wide) in paragraph at lines 470--477
+ [][] 
  []
 
 
-Underfull \hbox (badness 5817) in paragraph at lines 102--102
-[]|\OT1/lmr/m/n/10.95 VE, VT, Bf, BR[]pct, Ti/Te/Ttot,
+Overfull \hbox (119.39114pt too wide) in paragraph at lines 494--522
+ [][] 
  []
 
-
-Underfull \hbox (badness 10000) in paragraph at lines 102--102
-[]|\OT1/lmr/m/n/10.95 EE[]Total[]kcal, EE[]kcal[]h,
- []
-
-
-Underfull \hbox (badness 1533) in paragraph at lines 102--102
-[]|\OT1/lmr/m/n/10.95 Subject de-mo-graph-ics, cen-ter, de-vice,
- []
-
-
-! LaTeX Error: File `figures/fig_data_organization' not found.
-
-See the LaTeX manual or LaTeX Companion for explanation.
-Type  H <return>  for immediate help.
- ...                                              
-                                                  
-l.111 ...linewidth]{figures/fig_data_organization}
-                                                  
-? 
-! Emergency stop.
- ...                                              
-                                                  
-l.111 ...linewidth]{figures/fig_data_organization}
-                                                  
-I could not locate the file with any of these extensions:
-.pdf,.png,.jpg,.mps,.jpeg,.jbig2,.jb2,.PDF,.PNG,.JPG,.JPEG,.JBIG2,.JB2,.eps
-Try typing  <return>  to proceed.
-If that doesn't work, type  X <return>  to quit.
-
- 
+[10] [11] [12] [13] (./main_clinical.aux)
+Package rerunfilecheck Info: File `main_clinical.out' has not changed.
+(rerunfilecheck)             Checksum: D9AB34280135E04238D2EE5BA5CB81B4;3825.
+ ) 
 Here is how much of TeX's memory you used:
- 19904 strings out of 478287
- 372205 string characters out of 5849288
- 651944 words of memory out of 5000000
- 37735 multiletter control sequences out of 15000+600000
- 520639 words of font info for 65 fonts, out of 8000000 for 9000
+ 20020 strings out of 478287
+ 373339 string characters out of 5849288
+ 671165 words of memory out of 5000000
+ 37799 multiletter control sequences out of 15000+600000
+ 536608 words of font info for 70 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 83i,14n,80p,1169b,336s stack positions out of 5000i,500n,10000p,200000b,80000s
-!  ==> Fatal error occurred, no output PDF file produced!
+ 83i,12n,80p,1556b,575s stack positions out of 5000i,500n,10000p,200000b,80000s
+{/usr/share/texmf/fonts/enc/dvips/lm/lm-ts1.enc}{/usr/share/texmf/fonts/enc/d
+vips/lm/lm-rm.enc}{/usr/share/texmf/fonts/enc/dvips/lm/lm-rmtt.enc}{/usr/share/
+texmf/fonts/enc/dvips/lm/lm-mathsy.enc}{/usr/share/texmf/fonts/enc/dvips/lm/lm-
+mathit.enc}</usr/share/texmf/fonts/type1/public/lm/lmbx10.pfb></usr/share/texmf
+/fonts/type1/public/lm/lmbx12.pfb></usr/share/texmf/fonts/type1/public/lm/lmbx8
+.pfb></usr/share/texmf/fonts/type1/public/lm/lmmi10.pfb></usr/share/texmf/fonts
+/type1/public/lm/lmr10.pfb></usr/share/texmf/fonts/type1/public/lm/lmr12.pfb></
+usr/share/texmf/fonts/type1/public/lm/lmr6.pfb></usr/share/texmf/fonts/type1/pu
+blic/lm/lmr7.pfb></usr/share/texmf/fonts/type1/public/lm/lmr8.pfb></usr/share/t
+exmf/fonts/type1/public/lm/lmr9.pfb></usr/share/texmf/fonts/type1/public/lm/lmr
+i10.pfb></usr/share/texmf/fonts/type1/public/lm/lmri8.pfb></usr/share/texmf/fon
+ts/type1/public/lm/lmri9.pfb></usr/share/texmf/fonts/type1/public/lm/lmsy10.pfb
+></usr/share/texmf/fonts/type1/public/lm/lmtt10.pfb>
+Output written on main_clinical.pdf (13 pages, 383188 bytes).
+PDF statistics:
+ 303 PDF objects out of 1000 (max. 8388607)
+ 252 compressed objects within 3 object streams
+ 64 named destinations out of 1000 (max. 500000)
+ 173 words of extra memory for PDF output out of 10000 (max. 10000000)
+
